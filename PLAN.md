@@ -275,10 +275,10 @@ When executing this plan, the developer or agent must verify progress after each
 
 ## 5. Branch & PR Strategy
 
-1. **Current Branch:** `chore/docs-restructure`
+1. **Current Branch:** `improvements`
 2. **Review & Merge Process:**
    - Commit `PLAN.md` and docs migration files.
-   - Push branch to GitHub: `git push -u origin chore/docs-restructure`.
+   - Push branch to GitHub: `git push -u origin improvements`.
    - Submit Pull Request with a clear summary referencing this document.
    - The repository owner can review and merge the PR.
    - Future implementation phases can be executed sequentially against the verified checkpoints defined in this plan.

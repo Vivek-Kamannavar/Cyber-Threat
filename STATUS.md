@@ -1,6 +1,6 @@
 # Project Status: Cyber-Threat Detection
 
-- **Current Branch:** `chore/docs-restructure`
+- **Current Branch:** `improvements`
 - **Location:** `E:\Cyber-Threat`
 - **Active Local Ports:**
   - Backend API & WebSockets: `http://127.0.0.1:8000`
@@ -26,7 +26,7 @@
 1. **Pull / Merge Branch:**
    ```bash
    git fetch origin
-   git checkout chore/docs-restructure
+   git checkout improvements
    # or merge the PR directly into main on GitHub
    ```
 2. **Execute Phase 1 in `agy`:**
