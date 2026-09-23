@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import Header from './components/Header';
 import SummaryCards from './components/SummaryCards';
-import ManualInspectionPanel from './components/ManualInspectionPanel';
 import ThroughputChart from './components/ThroughputChart';
 import SimulationControl from './components/SimulationControl';
 import AlertFeed from './components/AlertFeed';
@@ -9,7 +8,6 @@ import ThreatDetailsModal from './components/ThreatDetailsModal';
 import NetworkTopologyGraph from './components/NetworkTopologyGraph';
 import FileUploadModal from './components/FileUploadModal';
 import AiCopilotDrawer from './components/AiCopilotDrawer';
-import { HelpCircle, X, ShieldCheck, ArrowRight, Activity, Bell } from 'lucide-react';
 
 export default function App() {
   const [isConnected, setIsConnected] = useState(false);
@@ -22,14 +20,11 @@ export default function App() {
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
   const [isExecutiveView, setIsExecutiveView] = useState(false);
   const [autoDetectionEnabled, setAutoDetectionEnabled] = useState(true);
-  const [showGuideModal, setShowGuideModal] = useState(false);
-  const [showBanner, setShowBanner] = useState(true);
   const wsRef = useRef(null);
   const prevAlertsRef = useRef(0);
 
   useEffect(() => {
     let ws = null;
-    let reconnectTimeout = null;
 
     const connectWebSocket = () => {
       const wsUrl = `ws://${window.location.hostname}:8000/ws/alerts`;
@@ -88,7 +83,7 @@ export default function App() {
                   alerts: currentTotal
                 }
               ];
-              return updated.slice(-25); // Keep last 25 time ticks
+              return updated.slice(-25);
             });
 
           } else if (msg.type === 'alert') {
@@ -101,12 +96,11 @@ export default function App() {
 
       ws.onclose = () => {
         setIsConnected(false);
-        reconnectTimeout = setTimeout(connectWebSocket, 3000);
+        setTimeout(connectWebSocket, 2000);
       };
 
-      ws.onerror = (err) => {
-        console.error("WebSocket error:", err);
-        ws.close();
+      ws.onerror = () => {
+        setIsConnected(false);
       };
     };
 
@@ -114,7 +108,6 @@ export default function App() {
 
     return () => {
       if (ws) ws.close();
-      if (reconnectTimeout) clearTimeout(reconnectTimeout);
     };
   }, []);
 
@@ -174,7 +167,7 @@ export default function App() {
   const hasCriticalThreat = alerts.some(a => (a.confidence_score || 0) >= 0.90);
 
   return (
-    <div className="min-h-screen flex flex-col bg-[#0b1120] text-slate-100">
+    <div className="min-h-screen flex flex-col bg-[#FFF1D1] text-black">
       <Header
         isConnected={isConnected}
         totalAlerts={alerts.length}
@@ -182,13 +175,13 @@ export default function App() {
         autoDetectionEnabled={autoDetectionEnabled}
         onToggleAutoDetection={handleToggleAutoDetection}
         onClearAlerts={handleClearAlerts}
-        onToggleGuide={() => setShowGuideModal(true)}
         onOpenUpload={() => setIsUploadModalOpen(true)}
         isExecutiveView={isExecutiveView}
         onToggleViewMode={() => setIsExecutiveView(!isExecutiveView)}
       />
 
-      <main className="flex-1 max-w-7xl w-full mx-auto p-4 md:p-6 space-y-6">
+      <main className="flex-1 max-w-[1440px] w-full mx-auto p-3 space-y-2.5">
+        {/* Top KPI Ribbon */}
         <SummaryCards
           telemetry={telemetry}
           totalAlerts={alerts.length}
@@ -196,28 +189,26 @@ export default function App() {
           autoDetectionEnabled={autoDetectionEnabled}
         />
 
-        {/* Manual Target IP & Website Threat Scanner (hidden in executive view) */}
-        {!isExecutiveView && (
-          <ManualInspectionPanel
-            onInspectionComplete={(newAlerts) => {
-              setAlerts((prev) => [...prev, ...newAlerts]);
-            }}
-          />
-        )}
-
+        {/* Compact Simulation Toolbar */}
         <SimulationControl onSimulate={handleSimulate} />
 
-        {!isExecutiveView && (
-          <ThroughputChart historyData={historyData} />
-        )}
+        {/* Dense 2-Column Split Workspace */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-2.5 items-start">
+          {/* Left Column (7 cols): Topology & Throughput */}
+          <div className="lg:col-span-7 space-y-2.5">
+            <NetworkTopologyGraph alerts={alerts} />
+            <ThroughputChart historyData={historyData} />
+          </div>
 
-        <NetworkTopologyGraph alerts={alerts} />
-
-        <AlertFeed
-          alerts={alerts}
-          onSelectAlert={(alert) => setSelectedAlert(alert)}
-          onOpenAiCopilot={handleOpenCopilot}
-        />
+          {/* Right Column (5 cols): Live Incident Stream Workbench */}
+          <div className="lg:col-span-5">
+            <AlertFeed
+              alerts={alerts}
+              onSelectAlert={(alert) => setSelectedAlert(alert)}
+              onOpenAiCopilot={handleOpenCopilot}
+            />
+          </div>
+        </div>
       </main>
 
       {/* Threat Evidence Deep Dive Modal */}
@@ -239,60 +230,8 @@ export default function App() {
         alert={activeCopilotAlert}
       />
 
-      {/* How It Works Guide Modal */}
-      {showGuideModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
-          <div className="bg-[#151f32] border border-[#23324d] rounded-2xl max-w-2xl w-full p-6 shadow-2xl relative space-y-4">
-            <div className="flex items-center justify-between border-b border-[#23324d] pb-3">
-              <div className="flex items-center gap-2">
-                <HelpCircle className="w-5 h-5 text-sky-400" />
-                <h3 className="text-base font-semibold text-white">How This Cyber Threat System Works</h3>
-              </div>
-              <button
-                onClick={() => setShowGuideModal(false)}
-                className="p-1 text-slate-400 hover:text-white rounded-lg hover:bg-slate-800"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            <div className="space-y-3 text-xs text-slate-300 leading-relaxed">
-              <div className="bg-[#0b1120] p-3 rounded-lg border border-[#23324d]">
-                <div className="font-semibold text-sky-300 mb-1">1. What is a "Data Diode"?</div>
-                <p>
-                  A data diode is a physical optical fiber connection that strictly transmits light in one direction. It allows critical infrastructure (power plants, water systems, defense networks) to send telemetry out without any physical possibility of external attackers transmitting exploit payloads inward.
-                </p>
-              </div>
-
-              <div className="bg-[#0b1120] p-3 rounded-lg border border-[#23324d]">
-                <div className="font-semibold text-amber-300 mb-1">2. How does the AI detect attacks without decrypting payloads?</div>
-                <p>
-                  Traditional tools break TLS encryption. Across a one-way diode, decryption is impossible. Our system extracts mathematical physics from packet headers: Shannon entropy on byte distributions, Inter-Arrival Time variance (botnet beaconing), and TLS JA3/JA4 cryptographic fingerprints.
-                </p>
-              </div>
-
-              <div className="bg-[#0b1120] p-3 rounded-lg border border-[#23324d]">
-                <div className="font-semibold text-rose-300 mb-1">3. What does the AI Copilot do?</div>
-                <p>
-                  Powered by Groq's high-speed inference (Llama 3.3 70B), the copilot provides human-readable incident summaries, facility risk impact analyses, immediate step-by-step mitigation checklists, and copyable firewall rules for rapid containment.
-                </p>
-              </div>
-            </div>
-
-            <div className="pt-2 flex justify-end">
-              <button
-                onClick={() => setShowGuideModal(false)}
-                className="px-4 py-2 bg-sky-500 hover:bg-sky-400 text-slate-950 font-semibold rounded-lg text-xs"
-              >
-                Understood
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      <footer className="border-t border-[#23324d] py-4 text-center text-xs font-mono text-slate-500 bg-[#0b1120]">
-        AI-Based Cyber Threat Detection Engine • Safe Unidirectional Data Diode Architecture
+      <footer className="border-t border-black py-3 text-center text-xs font-normal text-black bg-[#FFF1D1]">
+        CYBER THREAT DETECTION ENGINE • PASSIVE OPTICAL DIODE TELEMETRY
       </footer>
     </div>
   );

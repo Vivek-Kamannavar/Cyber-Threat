@@ -1,11 +1,11 @@
 import React, { useState, useRef } from 'react';
-import { UploadCloud, FileText, CheckCircle2, AlertCircle, Play, Square, X, Loader2 } from 'lucide-react';
+import { UploadCloud, FileText, AlertCircle, Play, Square, X } from 'lucide-react';
 
 export default function FileUploadModal({ isOpen, onClose, onUploadComplete }) {
   const [file, setFile] = useState(null);
   const [playbackSpeed, setPlaybackSpeed] = useState('5x');
   const [isUploading, setIsUploading] = useState(false);
-  const [uploadStatus, setUploadStatus] = useState(null); // 'replaying' | 'completed' | 'stopped' | 'error'
+  const [uploadStatus, setUploadStatus] = useState(null);
   const [statusDetails, setStatusDetails] = useState(null);
   const [errorMessage, setErrorMessage] = useState('');
   const fileInputRef = useRef(null);
@@ -117,28 +117,29 @@ export default function FileUploadModal({ isOpen, onClose, onUploadComplete }) {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
-      <div className="bg-[#151f32] border border-[#23324d] rounded-xl w-full max-w-lg shadow-2xl overflow-hidden flex flex-col">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
+      <div className="bg-[#FFF1D1] border border-black rounded-lg w-full max-w-md shadow-2xl overflow-hidden flex flex-col">
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-[#23324d]">
-          <div className="flex items-center gap-2">
-            <UploadCloud className="w-5 h-5 text-sky-400" />
-            <h2 className="text-base font-semibold text-slate-100">Live Traffic Ingestion (PCAP / Zeek)</h2>
+        <div className="flex items-center justify-between px-4 py-3 bg-[#FFF1D1] border-b border-black">
+          <div className="flex items-center gap-2 text-black">
+            <UploadCloud className="w-4 h-4 text-[#00B7CD]" />
+            <h2 className="text-xs font-bold uppercase tracking-tight">Capture Ingest (PCAP / Zeek)</h2>
           </div>
-          <button onClick={onClose} className="p-1 rounded-lg hover:bg-slate-800 text-slate-400 hover:text-slate-200">
-            <X className="w-5 h-5" />
+          <button 
+            onClick={onClose} 
+            className="p-1 rounded border border-black text-black bg-[#FFF1D1] transition-colors"
+          >
+            <X className="w-4 h-4" />
           </button>
         </div>
 
         {/* Content */}
-        <div className="p-6 space-y-4">
+        <div className="p-4 space-y-3.5 text-black">
           <div
             onDragOver={handleDragOver}
             onDrop={handleDrop}
             onClick={() => fileInputRef.current?.click()}
-            className={`border-2 border-dashed rounded-lg p-6 flex flex-col items-center justify-center cursor-pointer transition-colors ${
-              file ? 'border-sky-500/50 bg-sky-950/20' : 'border-[#23324d] hover:border-slate-600 bg-slate-900/40'
-            }`}
+            className="border-2 border-dashed border-black rounded-lg p-5 flex flex-col items-center justify-center cursor-pointer bg-[#FFF1D1]"
           >
             <input
               ref={fileInputRef}
@@ -147,40 +148,40 @@ export default function FileUploadModal({ isOpen, onClose, onUploadComplete }) {
               onChange={handleFileChange}
               className="hidden"
             />
-            <FileText className={`w-10 h-10 mb-2 ${file ? 'text-sky-400' : 'text-slate-500'}`} />
+            <FileText className={`w-8 h-8 mb-2 ${file ? 'text-[#00B7CD]' : 'text-black'}`} />
             {file ? (
               <div className="text-center">
-                <span className="text-sm font-medium text-slate-200">{file.name}</span>
-                <p className="text-xs text-slate-400 mt-1">{(file.size / 1024).toFixed(1)} KB — Click to choose a different file</p>
+                <span className="text-xs font-bold text-black">{file.name}</span>
+                <p className="text-[11px] text-black font-normal mt-0.5">{(file.size / 1024).toFixed(1)} KB (Ready to Stream)</p>
               </div>
             ) : (
               <div className="text-center">
-                <span className="text-sm font-medium text-slate-300">Drag & drop PCAP or Zeek log here</span>
-                <p className="text-xs text-slate-500 mt-1">Supports .pcap, .pcapng, conn.log, dns.log, ssl.log</p>
+                <span className="text-xs font-bold text-black">Click or drag PCAP or Zeek file</span>
+                <p className="text-[11px] text-black font-normal mt-0.5">Supports .pcap, .pcapng, and conn.log</p>
               </div>
             )}
           </div>
 
           {errorMessage && (
-            <div className="flex items-center gap-2 text-xs text-rose-400 bg-rose-950/30 border border-rose-900/50 px-3 py-2 rounded-lg">
-              <AlertCircle className="w-4 h-4 shrink-0" />
+            <div className="flex items-center gap-2 text-xs text-black bg-[#FFF1D1] border-2 border-[#DF301C] p-2.5 rounded-lg font-normal">
+              <AlertCircle className="w-4 h-4 text-[#DF301C] shrink-0" />
               <span>{errorMessage}</span>
             </div>
           )}
 
           {/* Replay Speed */}
-          <div className="flex items-center justify-between pt-2">
-            <label className="text-xs font-medium text-slate-300">Replay Playback Rate:</label>
-            <div className="flex gap-1 bg-slate-900 p-1 rounded-lg border border-[#23324d]">
+          <div className="flex items-center justify-between text-xs font-normal">
+            <span className="text-black">Playback Rate:</span>
+            <div className="flex border border-black rounded overflow-hidden">
               {['1x', '5x', '10x', 'instant'].map(speed => (
                 <button
                   key={speed}
                   type="button"
                   onClick={() => setPlaybackSpeed(speed)}
-                  className={`px-2.5 py-1 text-xs font-semibold rounded ${
+                  className={`px-2 py-0.5 text-xs transition-colors ${
                     playbackSpeed === speed
-                      ? 'bg-sky-500 text-slate-900 shadow-sm'
-                      : 'text-slate-400 hover:text-slate-200'
+                      ? 'bg-black text-[#FFF1D1] font-bold'
+                      : 'text-black bg-[#FFF1D1] font-normal'
                   }`}
                 >
                   {speed.toUpperCase()}
@@ -191,26 +192,22 @@ export default function FileUploadModal({ isOpen, onClose, onUploadComplete }) {
 
           {/* Status Feedback */}
           {uploadStatus && (
-            <div className="bg-slate-900/70 border border-[#23324d] rounded-lg p-3 text-xs space-y-1">
+            <div className="bg-[#FFF1D1] border border-black rounded-lg p-3 text-xs space-y-1.5 font-normal">
               <div className="flex items-center justify-between">
-                <span className="text-slate-400">Stream Status:</span>
-                <span className={`font-semibold capitalize ${
-                  uploadStatus === 'replaying' ? 'text-sky-400' :
-                  uploadStatus === 'completed' ? 'text-emerald-400' :
-                  uploadStatus === 'stopped' ? 'text-amber-400' : 'text-rose-400'
-                }`}>
+                <span className="text-black">Status:</span>
+                <span className={`font-bold uppercase ${uploadStatus === 'error' ? 'text-[#DF301C]' : 'text-black'}`}>
                   {uploadStatus}
                 </span>
               </div>
               {statusDetails && (
                 <>
-                  <div className="flex items-center justify-between text-slate-300">
+                  <div className="flex items-center justify-between text-black">
                     <span>Flows Processed:</span>
-                    <span className="font-mono">{statusDetails.flows_processed || 0}</span>
+                    <span className="font-bold text-black">{statusDetails.flows_processed || 0}</span>
                   </div>
-                  <div className="flex items-center justify-between text-slate-300">
-                    <span>Threat Alerts Triggered:</span>
-                    <span className="font-mono text-rose-400 font-bold">{statusDetails.alerts_raised || 0}</span>
+                  <div className="flex items-center justify-between text-black">
+                    <span>Alerts Raised:</span>
+                    <span className="font-bold text-[#DF301C]">{statusDetails.alerts_raised || 0}</span>
                   </div>
                 </>
               )}
@@ -219,30 +216,30 @@ export default function FileUploadModal({ isOpen, onClose, onUploadComplete }) {
         </div>
 
         {/* Footer */}
-        <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-[#23324d] bg-slate-900/50">
+        <div className="flex items-center justify-end gap-2 px-4 py-3 border-t border-black bg-[#FFF1D1]">
           {isUploading ? (
             <button
               onClick={handleStop}
-              className="flex items-center gap-1.5 px-4 py-2 text-xs font-semibold rounded-lg bg-amber-600 hover:bg-amber-500 text-white"
+              className="flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-bold rounded bg-[#DF301C] text-[#FFF1D1] border border-black transition-colors"
             >
               <Square className="w-3.5 h-3.5 fill-current" />
-              Stop Ingestion
+              Stop Ingest
             </button>
           ) : (
             <>
               <button
                 onClick={onClose}
-                className="px-4 py-2 text-xs font-medium text-slate-300 hover:text-slate-100"
+                className="px-3 py-1.5 text-xs font-normal border border-black text-black bg-[#FFF1D1] rounded transition-colors"
               >
-                Close
+                Cancel
               </button>
               <button
                 onClick={handleUpload}
                 disabled={!file}
-                className="flex items-center gap-1.5 px-4 py-2 text-xs font-semibold rounded-lg bg-sky-500 hover:bg-sky-400 text-slate-950 disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
+                className="flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-bold rounded bg-[#00B7CD] text-black border border-black transition-colors disabled:opacity-40"
               >
                 <Play className="w-3.5 h-3.5 fill-current" />
-                Stream Captured Flows
+                Stream Flows
               </button>
             </>
           )}

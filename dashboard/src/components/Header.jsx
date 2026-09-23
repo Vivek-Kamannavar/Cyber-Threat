@@ -1,8 +1,5 @@
 import React from 'react';
-import { 
-  ShieldAlert, Radio, Lock, HelpCircle, Power, Trash2, 
-  UploadCloud, Eye, Sliders, ShieldCheck, AlertTriangle 
-} from 'lucide-react';
+import { Shield, Radio, Power, Trash2, UploadCloud, Eye, Sliders } from 'lucide-react';
 
 export default function Header({
   isConnected,
@@ -11,124 +8,99 @@ export default function Header({
   autoDetectionEnabled,
   onToggleAutoDetection,
   onClearAlerts,
-  onToggleGuide,
   onOpenUpload,
   isExecutiveView,
   onToggleViewMode
 }) {
   return (
-    <header className="bg-[#151f32] border-b border-[#23324d] px-6 py-4 flex flex-col gap-4">
-      {/* Top Bar */}
-      <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4">
+    <header className="bg-[#FFF1D1] border-b border-black px-5 py-3">
+      <div className="max-w-[1440px] mx-auto flex flex-wrap items-center justify-between gap-3">
+        {/* Brand */}
         <div className="flex items-center gap-3">
-          <div className="p-2.5 bg-sky-950/60 border border-sky-500/40 rounded-xl text-sky-400">
-            <ShieldAlert className="w-6 h-6" />
+          <div className="w-8 h-8 rounded border border-black bg-[#FFF1D1] flex items-center justify-center text-black">
+            <Shield className="w-4 h-4" />
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <h1 className="text-lg font-bold text-slate-100 tracking-tight">
-                CYBER THREAT SOC <span className="text-sky-400 font-medium">| Data Diode Defense</span>
+              <h1 className="text-sm font-bold text-black tracking-tight">
+                CYBER THREAT SOC
               </h1>
-              <span className="px-2 py-0.5 text-[10px] font-mono bg-sky-950 text-sky-300 border border-sky-800 rounded font-semibold uppercase">
-                Air-Gap Secured
+              <span className="text-[11px] font-normal text-black bg-[#FFF1D1] px-2 py-0.5 rounded border border-[#00B7CD]">
+                DATA DIODE
               </span>
             </div>
-            <p className="text-xs text-slate-400 mt-0.5">
-              Zero-return-path passive analytical telemetry for critical industrial infrastructure
+            <p className="text-xs text-black font-normal">
+              Zero-return-path passive analytical telemetry
             </p>
           </div>
         </div>
 
-        {/* Action Controls */}
-        <div className="flex flex-wrap items-center gap-2.5">
-          {/* Executive / Forensic Mode Toggle */}
+        {/* Facility Incident Banner - Clean, No AI slop dots, No light tint backgrounds */}
+        <div className={`hidden md:flex items-center gap-2.5 px-3 py-1 rounded border text-xs font-normal bg-[#FFF1D1] ${
+          hasCriticalThreat
+            ? 'border-[#DF301C]'
+            : totalAlerts > 0
+            ? 'border-[#FF9100]'
+            : 'border-black'
+        }`}>
+          <span className="font-bold text-black">
+            {hasCriticalThreat ? 'CRITICAL THREAT ACTIVE' : totalAlerts > 0 ? 'ELEVATED ADVISORY' : 'SYSTEM NORMAL'}
+          </span>
+          <span className="text-black">|</span>
+          <span className="text-black font-normal">{totalAlerts} Alerts Logged</span>
+        </div>
+
+        {/* Controls */}
+        <div className="flex items-center gap-2">
+          {/* Mode */}
           <button
             onClick={onToggleViewMode}
-            className="flex items-center gap-1.5 px-3 py-1.5 bg-[#0b1120] hover:bg-slate-800 border border-[#23324d] rounded-lg text-xs font-medium text-slate-200 transition-colors shadow-sm"
-            title="Toggle between simplified executive explanations and deep forensic math metrics"
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-[#FFF1D1] border border-black rounded text-xs font-normal text-black transition-colors"
           >
-            {isExecutiveView ? <Eye className="w-3.5 h-3.5 text-sky-400" /> : <Sliders className="w-3.5 h-3.5 text-sky-400" />}
-            <span>Mode: {isExecutiveView ? 'Executive' : 'Deep Forensic'}</span>
+            {isExecutiveView ? <Eye className="w-3.5 h-3.5 text-black" /> : <Sliders className="w-3.5 h-3.5 text-black" />}
+            <span>{isExecutiveView ? 'Executive' : 'Technical'}</span>
           </button>
 
-          {/* Upload PCAP / Zeek Button */}
+          {/* Upload Capture */}
           <button
             onClick={onOpenUpload}
-            className="flex items-center gap-1.5 px-3 py-1.5 bg-sky-500 hover:bg-sky-400 text-slate-950 rounded-lg text-xs font-semibold shadow-sm transition-colors"
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-[#00B7CD] text-black rounded text-xs font-bold border border-black transition-colors"
           >
             <UploadCloud className="w-3.5 h-3.5" />
             <span>Upload Capture</span>
           </button>
 
-          {/* Auto-Detection Toggle */}
+          {/* Engine */}
           <button
             onClick={onToggleAutoDetection}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-medium transition-colors ${
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded border text-xs font-normal bg-[#FFF1D1] transition-colors ${
               autoDetectionEnabled
-                ? 'bg-emerald-950/60 border-emerald-800 text-emerald-300 hover:bg-emerald-900/60'
-                : 'bg-amber-950/60 border-amber-800 text-amber-300 hover:bg-amber-900/60'
+                ? 'border-black text-black'
+                : 'border-[#FF9100] text-black'
             }`}
           >
-            <Power className="w-3.5 h-3.5" />
-            <span>Engine: {autoDetectionEnabled ? 'Active' : 'Paused'}</span>
+            <Power className="w-3.5 h-3.5 text-black" />
+            <span>{autoDetectionEnabled ? 'Engine Active' : 'Paused'}</span>
           </button>
 
-          {/* Clear Alerts */}
+          {/* Clear */}
           {totalAlerts > 0 && (
             <button
               onClick={onClearAlerts}
-              className="flex items-center gap-1.5 px-2.5 py-1.5 bg-slate-900 hover:bg-rose-950/60 border border-[#23324d] hover:border-rose-800 rounded-lg text-xs font-medium text-slate-300 hover:text-rose-300 transition-colors"
+              className="flex items-center gap-1 px-2.5 py-1.5 border border-black rounded text-xs font-normal text-black bg-[#FFF1D1] transition-colors"
+              title="Clear alerts"
             >
               <Trash2 className="w-3.5 h-3.5" />
-              <span>Clear ({totalAlerts})</span>
+              <span>Clear</span>
             </button>
           )}
 
-          {/* WebSocket Status */}
-          <div className="flex items-center gap-2 px-3 py-1.5 bg-[#0b1120] border border-[#23324d] rounded-lg">
-            <Radio className={`w-3.5 h-3.5 ${isConnected ? 'text-emerald-400' : 'text-rose-400'}`} />
-            <span className={`text-xs font-mono font-medium ${isConnected ? 'text-emerald-400' : 'text-rose-400'}`}>
-              {isConnected ? 'LIVE FEED' : 'OFFLINE'}
-            </span>
+          {/* Status */}
+          <div className="flex items-center gap-1.5 px-2.5 py-1.5 border border-black rounded text-xs font-normal text-black bg-[#FFF1D1]">
+            <Radio className={`w-3.5 h-3.5 ${isConnected ? 'text-[#00B7CD]' : 'text-[#DF301C]'}`} />
+            <span>{isConnected ? 'Live' : 'Offline'}</span>
           </div>
         </div>
-      </div>
-
-      {/* Traffic Light Facility Status Banner */}
-      <div className={`px-4 py-2.5 rounded-xl border text-xs font-medium flex items-center justify-between transition-colors shadow-sm ${
-        hasCriticalThreat
-          ? 'bg-rose-950/50 border-rose-800 text-rose-200'
-          : totalAlerts > 0
-          ? 'bg-amber-950/50 border-amber-800 text-amber-200'
-          : 'bg-emerald-950/50 border-emerald-800 text-emerald-200'
-      }`}>
-        <div className="flex items-center gap-2.5">
-          {hasCriticalThreat ? (
-            <span className="flex h-3 w-3 relative">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
-              <span className="relative inline-flex rounded-full h-3 w-3 bg-rose-500"></span>
-            </span>
-          ) : totalAlerts > 0 ? (
-            <span className="inline-flex rounded-full h-3 w-3 bg-amber-400"></span>
-          ) : (
-            <span className="inline-flex rounded-full h-3 w-3 bg-emerald-400"></span>
-          )}
-
-          <span className="font-bold tracking-wide uppercase text-[11px]">
-            {hasCriticalThreat ? 'CRITICAL INCIDENT DETECTED:' : totalAlerts > 0 ? 'ELEVATED SECURITY ADVISORY:' : 'FACILITY STATUS: NORMAL'}
-          </span>
-          <span className="text-slate-300">
-            {hasCriticalThreat
-              ? 'Active high-confidence threat in progress across the unidirectional optical datalink. Immediate analyst review required.'
-              : totalAlerts > 0
-              ? 'Unusual traffic frequency or connection fan-out observed in the current 60s sliding window.'
-              : 'All industrial controllers and air-gapped systems secure. Zero anomalous threat signatures detected.'}
-          </span>
-        </div>
-
-        <span className="text-[11px] font-mono text-slate-400 hidden sm:inline">
-          {totalAlerts} Total Alerts Logged
-        </span>
       </div>
     </header>
   );
