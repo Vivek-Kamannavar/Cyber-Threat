@@ -44,3 +44,6 @@ pnpm-debug.log*
 Thumbs.db
 desktop.ini
 *.log
+.pytest_cache/
+backend/data/*.db*
+backend/data/*.joblib

@@ -7,6 +7,7 @@ Implements domain-specific detection algorithms for all 6 threat categories:
 4. Encrypted Malware (TLS/QUIC)
 5. Reconnaissance & Port Scanning
 6. Data Exfiltration
+Configured via centralized backend.config.Config parameters.
 """
 
 from typing import List, Dict, Any, Optional
@@ -17,6 +18,7 @@ from engine.features import (
     analyze_fanout_networkx,
     calculate_byte_asymmetry
 )
+from backend.config import Config
 
 
 class ThreatHeuristics:
@@ -43,7 +45,7 @@ class ThreatHeuristics:
         syn_count = sum(1 for f in flows_in_window if 'S' in f.get('tcp_flags', ''))
 
         # If high rate and low source IP entropy (single or few sources attacking)
-        if (len(flows_in_window) >= 25 and ip_entropy < 1.5) or (syn_count > 20):
+        if (len(flows_in_window) >= Config.DDOS_RATE_THRESHOLD and ip_entropy < Config.DDOS_ENTROPY_THRESHOLD) or (syn_count > 20):
             most_common_src = max(set(src_ips), key=src_ips.count)
             target_ip = flows_in_window[0]['flow_identifier']['dst_ip']
             confidence = min(0.98, round(0.75 + (0.01 * syn_count), 2))
@@ -85,8 +87,8 @@ class ThreatHeuristics:
                 iat_stats = calculate_iat_stats(timestamps)
                 cv = iat_stats['cv_iat']
 
-                # Low CV (< 0.20) indicates tight, periodic beaconing intervals
-                if cv < 0.22 and iat_stats['mean_iat'] > 0.5:
+                # Low CV indicates tight, periodic beaconing intervals
+                if cv < Config.C2_CV_THRESHOLD and iat_stats['mean_iat'] > 0.5:
                     confidence = round(max(0.80, 1.0 - cv), 2)
                     sample_flow = flows[-1]
 
@@ -120,8 +122,8 @@ class ThreatHeuristics:
         qtype = dns.get('qtype', 'A')
         scores = calculate_dns_ngram_score(query)
 
-        # High entropy (> 3.8), long query (> 25), or TXT/NULL record query
-        is_high_entropy = scores['entropy'] > 3.7 and scores['length'] > 20
+        # High entropy, long query, or TXT/NULL record query
+        is_high_entropy = scores['entropy'] > Config.DNS_ENTROPY_THRESHOLD and scores['length'] > 20
         is_unusual_qtype = qtype in ['TXT', 'NULL', 'CNAME'] and scores['entropy'] > 3.4
 
         if is_high_entropy or is_unusual_qtype:
@@ -203,7 +205,7 @@ class ThreatHeuristics:
         fanout_map = analyze_fanout_networkx(flows_in_window)
 
         for src_ip, metrics in fanout_map.items():
-            if metrics['unique_dst_ports'] >= 15 or metrics['unique_dst_ips'] >= 20:
+            if metrics['unique_dst_ports'] >= Config.RECON_PORT_THRESHOLD or metrics['unique_dst_ips'] >= Config.RECON_HOST_THRESHOLD:
                 confidence = min(0.95, round(0.70 + (metrics['unique_dst_ports'] * 0.01), 2))
                 sample_flow = [f for f in flows_in_window if f['flow_identifier']['src_ip'] == src_ip][-1]
 
@@ -233,8 +235,8 @@ class ThreatHeuristics:
 
         ratio = calculate_byte_asymmetry(bytes_sent, bytes_recv)
 
-        # High outbound asymmetry: ratio > 10.0 and sent bytes > 5 MB
-        if ratio > 10.0 and bytes_sent > 5_000_000:
+        # High outbound asymmetry: ratio > EXFIL_ASYMMETRY_RATIO and sent bytes > EXFIL_BYTES_THRESHOLD
+        if ratio > Config.EXFIL_ASYMMETRY_RATIO and bytes_sent > Config.EXFIL_BYTES_THRESHOLD:
             confidence = min(0.96, round(0.75 + (ratio / 100.0), 2))
             
             return {

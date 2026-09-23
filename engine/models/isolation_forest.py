@@ -1,25 +1,67 @@
 """
 Unsupervised Isolation Forest Model for Volumetric Flow Anomaly Detection
 Uses Scikit-Learn IsolationForest to detect statistical outliers in multi-dimensional flow metrics.
+Supports model serialization and persistence via joblib for zero cold-start latency.
 """
 
+import os
+import joblib
 import numpy as np
 from sklearn.ensemble import IsolationForest
-from typing import List, Dict, Any, Tuple
+from typing import List, Dict, Any, Tuple, Optional
+from backend.config import Config
 
 
 class FlowAnomalyDetector:
-    """Isolation Forest anomaly detector trained on flow metrics."""
+    """Isolation Forest anomaly detector trained on flow metrics with persistent disk caching."""
 
-    def __init__(self, contamination: float = 0.05, random_state: int = 42):
+    def __init__(self, contamination: float = 0.05, random_state: int = 42, model_path: Optional[str] = None):
+        self.contamination = contamination
+        self.random_state = random_state
+        self.model_path = model_path or Config.MODEL_PATH
+        self.model: Optional[IsolationForest] = None
+        self.is_fitted = False
+
+        if self.model_path and os.path.exists(self.model_path):
+            try:
+                self.load_model(self.model_path)
+            except Exception as e:
+                print(f"Warning: Failed to load cached model from {self.model_path} ({e}). Recalibrating...")
+                self._initialize_and_fit()
+        else:
+            self._initialize_and_fit()
+
+    def _initialize_and_fit(self):
+        """Initializes a new IsolationForest, fits baseline synthetic samples, and saves to disk."""
         self.model = IsolationForest(
             n_estimators=100,
-            contamination=contamination,
-            random_state=random_state,
+            contamination=self.contamination,
+            random_state=self.random_state,
             n_jobs=-1
         )
-        self.is_fitted = False
         self._fit_initial_baseline()
+        if self.model_path:
+            try:
+                self.save_model(self.model_path)
+            except Exception as e:
+                print(f"Warning: Could not save model to {self.model_path}: {e}")
+
+    def save_model(self, filepath: str):
+        """Serializes and saves the fitted model to disk via joblib."""
+        os.makedirs(os.path.dirname(os.path.abspath(filepath)), exist_ok=True)
+        joblib.dump({"model": self.model, "is_fitted": self.is_fitted}, filepath)
+
+    def load_model(self, filepath: str):
+        """Loads a pre-fitted model from disk via joblib."""
+        if not os.path.exists(filepath):
+            raise FileNotFoundError(f"Model file not found at {filepath}")
+        loaded = joblib.load(filepath)
+        if isinstance(loaded, dict) and "model" in loaded:
+            self.model = loaded["model"]
+            self.is_fitted = loaded.get("is_fitted", True)
+        else:
+            self.model = loaded
+            self.is_fitted = True
 
     def _extract_feature_vector(self, flow: Dict[str, Any]) -> List[float]:
         """
@@ -37,7 +79,7 @@ class FlowAnomalyDetector:
 
     def _fit_initial_baseline(self):
         """Fits the model with synthetic baseline benign flow samples."""
-        np.random.seed(42)
+        np.random.seed(self.random_state)
         # Generate 200 synthetic baseline flow vectors (normal traffic)
         baseline_bytes_sent = np.random.normal(500, 200, 200)
         baseline_bytes_recv = np.random.normal(2500, 1000, 200)
@@ -61,7 +103,7 @@ class FlowAnomalyDetector:
         Predicts if flow is an anomaly.
         Returns (is_anomaly: bool, anomaly_score: float in range [0.0, 1.0]).
         """
-        if not self.is_fitted:
+        if not self.is_fitted or self.model is None:
             return False, 0.0
 
         vector = np.array([self._extract_feature_vector(flow)])
