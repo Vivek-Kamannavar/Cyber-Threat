@@ -2,13 +2,13 @@
 Unidirectional IP Traffic Parser
 Strictly read-only network flow ingestion module for Data Diode environments.
 Parses Zeek logs (conn.log, dns.log, ssl.log), Scapy PCAP captures, and raw flow streams.
-Includes device and website domain mapping for IP address resolution.
+Provides multi-log correlation matching connection UIDs across conn, dns, and ssl logs.
 """
 
 import json
 import time
-from typing import Dict, Any, Generator, List, Optional
 import os
+from typing import Dict, Any, Generator, List, Optional
 
 IP_RESOLVER_MAP = {
     # Benign Infrastructure & Websites
@@ -69,6 +69,87 @@ class ZeekLogParser:
         return None
 
 
+class ZeekMultiLogCorrelator:
+    """Correlates multiple Zeek logs (conn.log, dns.log, ssl.log) by connection UID."""
+
+    def __init__(self):
+        self.dns_by_uid: Dict[str, Dict[str, Any]] = {}
+        self.ssl_by_uid: Dict[str, Dict[str, Any]] = {}
+
+    def _parse_records_from_file(self, filepath: str) -> List[Dict[str, Any]]:
+        if not os.path.exists(filepath):
+            return []
+        with open(filepath, 'r', encoding='utf-8', errors='ignore') as f:
+            content = f.read().strip()
+            if content.startswith('{') or content.startswith('['):
+                try:
+                    data = json.loads(content)
+                    if isinstance(data, list):
+                        return data
+                    elif isinstance(data, dict):
+                        return [data]
+                except Exception:
+                    pass
+            records = []
+            for line in content.splitlines():
+                rec = ZeekLogParser.parse_log_line(line)
+                if rec:
+                    records.append(rec)
+            return records
+
+    def index_dns_log(self, filepath: str):
+        """Indexes dns.log records keyed by UID."""
+        records = self._parse_records_from_file(filepath)
+        for rec in records:
+            if "uid" in rec:
+                self.dns_by_uid[rec["uid"]] = {
+                    "query": rec.get("query"),
+                    "qtype": rec.get("qtype_name") or rec.get("qtype")
+                }
+
+    def index_ssl_log(self, filepath: str):
+        """Indexes ssl.log records keyed by UID."""
+        records = self._parse_records_from_file(filepath)
+        for rec in records:
+            if "uid" in rec:
+                self.ssl_by_uid[rec["uid"]] = {
+                    "ja3": rec.get("ja3"),
+                    "ja4": rec.get("ja4"),
+                    "sni": rec.get("server_name"),
+                    "cipher": rec.get("cipher")
+                }
+
+    def stream_correlated_flows(self, conn_log_path: str) -> Generator[Dict[str, Any], None, None]:
+        """Streams normalized flows from conn.log enriched with indexed DNS and SSL metadata."""
+        if not os.path.exists(conn_log_path):
+            raise FileNotFoundError(f"Zeek log file not found: {conn_log_path}")
+
+        # Check if dns.log or ssl.log exist in the same directory
+        parent_dir = os.path.dirname(os.path.abspath(conn_log_path))
+        dns_path = os.path.join(parent_dir, "dns.log")
+        ssl_path = os.path.join(parent_dir, "ssl.log")
+
+        if os.path.exists(dns_path) and not self.dns_by_uid:
+            self.index_dns_log(dns_path)
+        if os.path.exists(ssl_path) and not self.ssl_by_uid:
+            self.index_ssl_log(ssl_path)
+
+        with open(conn_log_path, 'r', encoding='utf-8', errors='ignore') as f:
+            for line in f:
+                raw_rec = ZeekLogParser.parse_log_line(line)
+                if not raw_rec:
+                    continue
+
+                uid = raw_rec.get("uid")
+                if uid:
+                    if uid in self.dns_by_uid:
+                        raw_rec.update(self.dns_by_uid[uid])
+                    if uid in self.ssl_by_uid:
+                        raw_rec.update(self.ssl_by_uid[uid])
+
+                yield FlowNormalizer.normalize(raw_rec)
+
+
 class FlowNormalizer:
     """Normalizes heterogeneous input formats into a standardized Unidirectional Flow record."""
 
@@ -86,7 +167,7 @@ class FlowNormalizer:
         resp_bytes = int(raw_record.get('resp_bytes') or raw_record.get('bytes_received') or raw_record.get('resp_ip_bytes') or 0)
 
         dns_query = raw_record.get('query') or raw_record.get('dns_query')
-        qtype_name = raw_record.get('qtype_name') or raw_record.get('dns_qtype')
+        qtype_name = raw_record.get('qtype_name') or raw_record.get('dns_qtype') or raw_record.get('qtype')
         
         ja3_hash = raw_record.get('ja3') or raw_record.get('ja3_hash')
         ja4_hash = raw_record.get('ja4') or raw_record.get('ja4_hash')

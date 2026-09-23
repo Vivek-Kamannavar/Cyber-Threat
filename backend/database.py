@@ -58,6 +58,13 @@ def init_db(db_path: Optional[str] = None):
                     bytes_recv INTEGER
                 );
                 """)
+                conn.execute("""
+                CREATE TABLE IF NOT EXISTS ai_analysis_cache (
+                    alert_id TEXT PRIMARY KEY,
+                    analysis_json TEXT,
+                    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+                );
+                """)
                 conn.execute("CREATE INDEX IF NOT EXISTS idx_alerts_timestamp ON alerts(timestamp);")
                 conn.execute("CREATE INDEX IF NOT EXISTS idx_alerts_threat_class ON alerts(threat_class);")
         finally:
@@ -216,3 +223,42 @@ async def async_get_alert_by_id(alert_id: str, db_path: Optional[str] = None) ->
 
 async def async_clear_alerts(db_path: Optional[str] = None):
     return await asyncio.to_thread(clear_alerts, db_path)
+
+
+def save_ai_analysis(alert_id: str, analysis_dict: Dict[str, Any], db_path: Optional[str] = None):
+    """Caches AI incident analysis for an alert to prevent duplicate LLM calls."""
+    init_db(db_path)
+    with _db_lock:
+        conn = get_db_connection(db_path)
+        try:
+            with conn:
+                conn.execute(
+                    "INSERT OR REPLACE INTO ai_analysis_cache (alert_id, analysis_json) VALUES (?, ?)",
+                    (alert_id, json.dumps(analysis_dict))
+                )
+        finally:
+            conn.close()
+
+
+def get_ai_analysis(alert_id: str, db_path: Optional[str] = None) -> Optional[Dict[str, Any]]:
+    """Retrieves cached AI incident analysis for an alert."""
+    init_db(db_path)
+    with _db_lock:
+        conn = get_db_connection(db_path)
+        try:
+            cursor = conn.cursor()
+            cursor.execute("SELECT analysis_json FROM ai_analysis_cache WHERE alert_id = ?", (alert_id,))
+            row = cursor.fetchone()
+            if row and row["analysis_json"]:
+                return json.loads(row["analysis_json"])
+            return None
+        finally:
+            conn.close()
+
+
+async def async_save_ai_analysis(alert_id: str, analysis_dict: Dict[str, Any], db_path: Optional[str] = None):
+    return await asyncio.to_thread(save_ai_analysis, alert_id, analysis_dict, db_path)
+
+
+async def async_get_ai_analysis(alert_id: str, db_path: Optional[str] = None) -> Optional[Dict[str, Any]]:
+    return await asyncio.to_thread(get_ai_analysis, alert_id, db_path)

@@ -42,7 +42,7 @@ class ThreatHeuristics:
 
         src_ips = [f['flow_identifier']['src_ip'] for f in flows_in_window]
         ip_entropy = calculate_shannon_entropy(src_ips)
-        syn_count = sum(1 for f in flows_in_window if 'S' in f.get('tcp_flags', ''))
+        syn_count = sum(1 for f in flows_in_window if f.get('tcp_flags') in ('S', 'SYN'))
 
         # If high rate and low source IP entropy (single or few sources attacking)
         if (len(flows_in_window) >= Config.DDOS_RATE_THRESHOLD and ip_entropy < Config.DDOS_ENTROPY_THRESHOLD) or (syn_count > 20):
@@ -66,6 +66,10 @@ class ThreatHeuristics:
             }
         return None
 
+    BENIGN_INFRASTRUCTURE = {
+        "8.8.8.8", "1.1.1.1", "142.250.190.46", "13.107.42.14", "151.101.1.69"
+    }
+
     @classmethod
     def evaluate_c2_beaconing(cls, src_ip_flows: List[Dict[str, Any]]) -> Optional[Dict[str, Any]]:
         """
@@ -79,6 +83,8 @@ class ThreatHeuristics:
         dst_groups = {}
         for f in src_ip_flows:
             dst = f['flow_identifier']['dst_ip']
+            if dst in cls.BENIGN_INFRASTRUCTURE:
+                continue
             dst_groups.setdefault(dst, []).append(f)
 
         for dst_ip, flows in dst_groups.items():

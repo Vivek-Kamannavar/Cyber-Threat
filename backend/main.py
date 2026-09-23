@@ -11,7 +11,7 @@ import time
 import uuid
 import re
 from typing import List, Dict, Any, Optional
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect, HTTPException
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect, HTTPException, UploadFile, File, Query
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
@@ -21,9 +21,13 @@ if ROOT_DIR not in sys.path:
     sys.path.insert(0, ROOT_DIR)
 
 from ingest.traffic_generator import TrafficGenerator
+from ingest.pcap_loader import PcapStreamLoader
+from ingest.parser import ZeekMultiLogCorrelator
 from engine.threat_detector import ThreatDetector
 from engine.features import calculate_dns_ngram_score
 from backend.config import Config
+from backend.services.groq_service import GroqCopilotService
+from backend.database import get_alert_by_id, save_ai_analysis, get_ai_analysis
 
 app = FastAPI(
     title="Cyber Threat Detection System - Data Diode Environment",
@@ -172,6 +176,257 @@ def get_alerts():
     return {
         "count": len(detector.get_all_alerts()),
         "alerts": detector.get_all_alerts()
+    }
+
+
+# ======================================================================
+# INGESTION PIPELINE (PHASE 2: PCAP & ZEEK REPLAY)
+# ======================================================================
+class IngestionTracker:
+    def __init__(self):
+        self.status = "idle"  # idle | replaying | completed | stopped | error
+        self.source = ""
+        self.total_flows_processed = 0
+        self.total_alerts_raised = 0
+        self.stop_requested = False
+        self.progress_percent = 0.0
+        self.active_task: Optional[asyncio.Task] = None
+
+ingestion_tracker = IngestionTracker()
+
+
+async def replay_file_worker(filepath: str, filename: str, playback_speed: str):
+    ingestion_tracker.status = "replaying"
+    ingestion_tracker.source = filename
+    ingestion_tracker.total_flows_processed = 0
+    ingestion_tracker.total_alerts_raised = 0
+    ingestion_tracker.stop_requested = False
+    ingestion_tracker.progress_percent = 0.0
+
+    delay_map = {
+        "1x": 0.04,
+        "5x": 0.008,
+        "10x": 0.002,
+        "instant": 0.0
+    }
+    delay = delay_map.get(playback_speed, 0.01)
+
+    try:
+        if filename.lower().endswith((".pcap", ".pcapng")):
+            flow_gen = PcapStreamLoader.stream_flows(filepath)
+        else:
+            correlator = ZeekMultiLogCorrelator()
+            flow_gen = correlator.stream_correlated_flows(filepath)
+
+        for flow in flow_gen:
+            if ingestion_tracker.stop_requested:
+                ingestion_tracker.status = "stopped"
+                break
+
+            alerts = detector.process_flow(flow)
+            ingestion_tracker.total_flows_processed += 1
+            if alerts:
+                ingestion_tracker.total_alerts_raised += len(alerts)
+                for alert in alerts:
+                    await manager.broadcast({
+                        "type": "alert",
+                        "data": alert
+                    })
+
+            if ingestion_tracker.total_flows_processed % 5 == 0 or delay > 0:
+                stats = detector.get_stats()
+                await manager.broadcast({
+                    "type": "telemetry",
+                    "timestamp": time.time(),
+                    "data": stats["throughput"],
+                    "total_alerts": stats["total_alerts_raised"],
+                    "auto_detection_enabled": auto_detection_enabled
+                })
+
+            if delay > 0:
+                await asyncio.sleep(delay)
+
+        if not ingestion_tracker.stop_requested:
+            ingestion_tracker.status = "completed"
+            ingestion_tracker.progress_percent = 100.0
+
+    except Exception as e:
+        ingestion_tracker.status = "error"
+        print(f"File ingestion error: {e}")
+    finally:
+        try:
+            if os.path.exists(filepath):
+                os.remove(filepath)
+        except Exception:
+            pass
+
+
+@app.post("/api/ingest/upload")
+async def upload_ingest_file(
+    file: UploadFile = File(...),
+    playback_speed: str = Query("1x", pattern="^(1x|5x|10x|instant)$")
+):
+    """Uploads and streams a PCAP or Zeek log file through the detection engine."""
+    filename = file.filename or "unknown_capture"
+    valid_exts = (".pcap", ".pcapng", ".log")
+    if not any(filename.lower().endswith(ext) for ext in valid_exts):
+        raise HTTPException(status_code=400, detail=f"Unsupported file format. Allowed: {valid_exts}")
+
+    upload_dir = os.path.join(ROOT_DIR, "backend", "data", "uploads")
+    os.makedirs(upload_dir, exist_ok=True)
+    temp_path = os.path.join(upload_dir, f"{uuid.uuid4().hex}_{filename}")
+
+    with open(temp_path, "wb") as f:
+        content = await file.read()
+        f.write(content)
+
+    # Cancel previous replay task if still running
+    if ingestion_tracker.active_task and not ingestion_tracker.active_task.done():
+        ingestion_tracker.stop_requested = True
+        await asyncio.sleep(0.05)
+
+    ingestion_tracker.active_task = asyncio.create_task(
+        replay_file_worker(temp_path, filename, playback_speed)
+    )
+
+    if playback_speed == "instant":
+        await ingestion_tracker.active_task
+
+    return {
+        "status": "started" if playback_speed != "instant" else ingestion_tracker.status,
+        "filename": filename,
+        "playback_speed": playback_speed,
+        "flows_processed": ingestion_tracker.total_flows_processed,
+        "alerts_raised": ingestion_tracker.total_alerts_raised
+    }
+
+
+@app.post("/api/ingest/stop")
+async def stop_ingest_file():
+    """Stops the active PCAP or Zeek replay task."""
+    ingestion_tracker.stop_requested = True
+    ingestion_tracker.status = "stopped"
+    return {"status": "stopped"}
+
+
+@app.get("/api/ingest/status")
+def get_ingest_status():
+    """Returns the current file ingestion status and progress."""
+    return {
+        "status": ingestion_tracker.status,
+        "source": ingestion_tracker.source,
+        "flows_processed": ingestion_tracker.total_flows_processed,
+        "alerts_raised": ingestion_tracker.total_alerts_raised,
+        "progress_percent": ingestion_tracker.progress_percent
+    }
+
+
+# ======================================================================
+# AI COPILOT PIPELINE (PHASE 3: GROQ INCIDENT ASSISTANT)
+# ======================================================================
+ai_copilot = GroqCopilotService()
+
+
+@app.post("/api/ai/analyze-alert/{alert_id}")
+async def analyze_alert_with_ai(alert_id: str):
+    """
+    Generates or fetches cached AI-driven executive analysis, impact assessment,
+    and remediation checklist for a specific threat alert.
+    """
+    cached = get_ai_analysis(alert_id)
+    if cached:
+        return {"alert_id": alert_id, "cached": True, "analysis": cached}
+
+    alert = get_alert_by_id(alert_id)
+    if not alert:
+        for a in detector.get_all_alerts():
+            if a.get("alert_id") == alert_id:
+                alert = a
+                break
+
+    if not alert:
+        raise HTTPException(status_code=404, detail=f"Alert {alert_id} not found.")
+
+    analysis = ai_copilot.analyze_alert(alert)
+    save_ai_analysis(alert_id, analysis)
+    return {"alert_id": alert_id, "cached": False, "analysis": analysis}
+
+
+class AiChatRequest(BaseModel):
+    message: str
+    alert_id: Optional[str] = None
+    alert_context: Optional[Dict[str, Any]] = None
+    history: Optional[List[Dict[str, str]]] = None
+
+
+@app.post("/api/ai/chat")
+async def ai_copilot_chat(req: AiChatRequest):
+    """Interactive SOC Analyst chat regarding active threats and air-gapped containment."""
+    ctx = req.alert_context
+    if req.alert_id and not ctx:
+        ctx = get_alert_by_id(req.alert_id)
+
+    reply = ai_copilot.chat_response(req.message, ctx, req.history)
+    return {"reply": reply}
+
+
+# ======================================================================
+# DYNAMIC TOPOLOGY ENDPOINT (PHASE 4)
+# ======================================================================
+@app.get("/api/topology")
+def get_live_topology():
+    """Extracts communicating hosts and interaction arcs dynamically from the sliding window."""
+    flows = detector.window_manager.get_recent_flows()
+    nodes = {}
+    edges = []
+    seen_edges = set()
+
+    for f in flows:
+        fid = f.get("flow_identifier", {})
+        src = fid.get("src_ip")
+        dst = fid.get("dst_ip")
+        proto = fid.get("protocol", "TCP")
+
+        if src and src not in nodes:
+            nodes[src] = {
+                "id": src,
+                "label": fid.get("src_label") or src,
+                "is_internal": src.startswith(("192.168.", "10.", "172.16.")),
+                "is_threat": False
+            }
+        if dst and dst not in nodes:
+            nodes[dst] = {
+                "id": dst,
+                "label": fid.get("dst_label") or dst,
+                "is_internal": dst.startswith(("192.168.", "10.", "172.16.")),
+                "is_threat": False
+            }
+
+        if src and dst:
+            edge_key = f"{src}->{dst}"
+            if edge_key not in seen_edges:
+                seen_edges.add(edge_key)
+                edges.append({
+                    "source": src,
+                    "target": dst,
+                    "protocol": proto,
+                    "bytes": f.get("bytes_sent", 0)
+                })
+
+    recent_alerts = detector.get_all_alerts()[-20:]
+    for a in recent_alerts:
+        afid = a.get("flow_identifier", {})
+        asrc = afid.get("src_ip")
+        adst = afid.get("dst_ip")
+        if asrc in nodes:
+            nodes[asrc]["is_threat"] = True
+        if adst in nodes:
+            nodes[adst]["is_threat"] = True
+
+    return {
+        "nodes": list(nodes.values())[:30],
+        "edges": edges[-40:],
+        "total_active_flows": len(flows)
     }
 
 
