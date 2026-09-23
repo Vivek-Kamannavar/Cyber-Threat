@@ -1,173 +1,186 @@
-# Master Plan: UI De-Slop, Real-World Data Ingestion & Live Threat Transition (FINAL_PLAN.md)
+# Master Implementation Plan: Real-World Ingestion, ML-to-LLM Transition & SOC Workstation
 
 **Project:** AI-Based Cyber Threat Detection in Unidirectional IP Traffic  
 **Repository:** `Vivek-Kamannavar/Cyber-Threat`  
-**Date:** September 2026  
+**Active Fork:** `shrinivas-sn/Cyber-Threat`  
 **Active Branch:** `feat/palette-satoshi-anti-slop`  
-**Base Branch:** `main`
+**PR URL:** https://github.com/Vivek-Kamannavar/Cyber-Threat/pull/3  
+**Date:** September 2026
 
 ---
 
-## 1. Project Roadmap: What Is Done & What Is Left (In Short)
+## 1. Executive Summary & Status
 
-```
-┌────────────────────────────────────────────────────────────────────────────────────────┐
-│ COMPLETED WORK                                                                         │
-│  [X] Phase 1-5 Core Backend: FastAPI, Data Diode Engine, Scapy Replay, Isolation Forest│
-│  [X] Strict 4-Color Palette: #FFF1D1 (Cream), #00B7CD (Teal), #DF301C (Red), #FF9100   │
-│  [X] Satoshi Font Family: Weights 700 (headings) & 400 (body/all) with Pure Black Font │
-│  [X] Complete AI-Slop Eradication: Zero emojis, zero status dots, zero opacity tints  │
-│  [X] Dense SOC Layout: Split-pane topology, throughput line charts, alert stream       │
-├────────────────────────────────────────────────────────────────────────────────────────┤
-│ REMAINING WORK (WHAT IS LEFT)                                                          │
-│  [ ] 1. Real-World Ingestion via `@shrinivas-sn/adapter-ingestion`:                     │
-│         - Connect live open-source CTI threat feeds (ThreatFox, Feodo Tracker, CISA)   │
-│         - 1-Click "Sync Live Threat Intel" button in dashboard                         │
-│         - Correlate incoming traffic flows against 10,000+ real malicious IOCs         │
-│  [ ] 2. ML Model Weight Reduction & LLM Replacement:                                   │
-│         - Replace heavy 300-400MB local Python model files with lightweight            │
-│           heuristic + Groq/LLM inference layer for server deployment.                  │
-│  [ ] 3. Production Dockerization & Server Deployment:                                  │
-│         - Multi-stage Dockerfile, Nginx reverse proxy, and systemd service scripts.    │
-└────────────────────────────────────────────────────────────────────────────────────────┘
-```
+This master plan lays out the exact execution path for moving from the current state (clean SOC UI + synthetic simulation engine) to a **100% production-ready, real-world cyber threat detection platform**.
+
+### Current State (Completed in PR #3)
+- [x] Merged 5-Phase backend architecture (Data Diode emulation, unidirectional flow parsing, Isolation Forest, and Groq Copilot).
+- [x] Strict 4-color design system enforced: `#FFF1D1` (Warm Cream), `#00B7CD` (Teal), `#DF301C` (Crimson Red), `#FF9100` (Orange), Pure Black font (`#000000`).
+- [x] Satoshi typography with strictly 2 weights: 700 for headings, 400 for body/labels.
+- [x] Zero AI slop: all emojis, circular status dots, glowing drop shadows, and opacity tint washes eliminated.
+
+### Next Execution Stages
+- **Phase 6:** Ingesting Real-World Live Threat Intelligence with `@shrinivas-sn/adapter-ingestion`.
+- **Phase 7:** Eliminating Heavy Python ML Models (300–400MB) & Replacing with Lightweight LLM Inference Layer for Server Deployment.
+- **Phase 8:** 1-Click Frontend Live Threat Sync & Real-Time Flow Correlation.
+- **Phase 9:** Verification, Edge Case Testing & Mainline Merge.
 
 ---
 
-## 2. Completed Phase: UI De-Slop & Design System Audit
+## 2. Phase 6: Ingesting Real-World Threat Intelligence with `@shrinivas-sn/adapter-ingestion`
 
-### 2.1 The 4-Color Strict Palette Specification
-Source: `https://colorhunt.co/palette/df301cff9100fff1d100b7cd`
+### 2.1 Package Overview
+- **Package:** `@shrinivas-sn/adapter-ingestion@0.2.0` (Published by Shrinivas Nemagoudar, MIT License).
+- **Core Mechanism:** Generic Fetch ➔ Extract ➔ Dedupe ➔ Store pipeline with built-in canary shape-drift detection.
+- **Why it fits:** It allows fetching live, publicly available threat intelligence feeds (C2 IPs, malware domains, malicious ports) from open sources with zero external dependencies and zero API fees, ensuring the system operates with real-world IOCs (Indicators of Compromise).
 
-| Role | Color Hex | Usage & Behavioral Restraint |
-| :--- | :---: | :--- |
-| **Canvas & Card Background** | `#FFF1D1` | Used as the 100% solid background for page canvas, cards, panels, inputs, and modals. **Zero opacity tints** (`/10`, `/20`, `bg-black/5`) permitted. |
-| **Primary Action & Telemetry** | `#00B7CD` | Upload button, Copilot action, Data Diode indicator, throughput pulse line, packet speed metrics. |
-| **Critical Threat & Danger** | `#DF301C` | Critical severity tags, threat spike spikes, emergency stop button, flagged alert badges. |
-| **Warning & Advisory** | `#FF9100` | High/Medium severity tags, detection pause status, facility impact advisories. |
-| **Font Color** | `#000000` | Pure solid black (`#000000`) across all headings, body text, metadata, timestamps, and labels. |
-
-### 2.2 Typography Rules
-* **Font Family:** [Satoshi](https://www.fontshare.com/fonts/satoshi) loaded via Fontshare CDN (`https://api.fontshare.com/v2/css?f[]=satoshi@700,400&display=swap`).
-* **Strict 2 Weights:**
-  - **700 (`font-bold`):** Reserved exclusively for headings (`h1`–`h6`) and primary section titles.
-  - **400 (`font-normal`):** Used for all body copy, metadata, timestamps, button text, and inputs.
-* **Banned Styles:** No `font-mono`, `font-semibold`, `font-medium`, `font-black`, or italic font weights.
-
-### 2.3 Eradicated Elements (Zero AI-Slop Guarantee)
-* **Zero Emojis:** Eliminated all unicode emojis (`⚡`, `🛡️`, `🎯`, `⏱️`, `🧪`, `🔥`, `✨`, `⚠️`, `✅`, `💡`, `➔`) across all JSX components. Replaced with clean SVG icons from `lucide-react`.
-* **Zero Indicator Dots:** Removed all circular status dots (`rounded-full w-2 h-2`) and pulsing animations (`animate-pulse`) from cards and legends.
-* **Zero Background Washes:** Converted all translucent grey/pastel overlays (`bg-black/5`, `fillOpacity` in charts, `/10` tints) into solid `#FFF1D1` surfaces with crisp solid borders (`border-black`).
-
----
-
-## 3. Real-World Threat Ingestion: `@shrinivas-sn/adapter-ingestion`
-
-### 3.1 Package Architecture
-The open-source package `@shrinivas-sn/adapter-ingestion@0.2.0` (by Shrinivas Nemagoudar) provides a production-grade **fetch ➔ extract ➔ dedupe ➔ store** ETL engine with:
-1. **Zero External Dependencies:** Native Fetch and crypto hashing.
-2. **Canary Shape-Drift Detection:** Emits warning if the remote threat intelligence site changes structure.
-3. **Atomic File Storage & Mutex Locking:** Prevents race conditions during background sync.
-4. **Content-Hash Deduplication:** Stores only unique, new threat indicators without duplicates.
-
-### 3.2 Target Free Open Threat Feeds (Zero API Key Required)
+### 2.2 Target Free Threat Intelligence Feeds
 1. **ThreatFox (abuse.ch):** Live Indicators of Compromise (C2 IP addresses, malware payloads, malicious ports).
+   - Feed Endpoint: `https://threatfox-api.abuse.ch/api/v1/`
 2. **Feodo Tracker (abuse.ch):** Active botnet C2 IP address blocklist.
-3. **URLhaus (abuse.ch):** Newly discovered malware distribution endpoints.
+   - Feed Endpoint: `https://feodotracker.abuse.ch/downloads/ipblocklist_recommended.json`
+3. **URLhaus (abuse.ch):** Active malware distribution URLs and hostnames.
+   - Feed Endpoint: `https://urlhaus-api.abuse.ch/v1/urls/recent/`
 4. **CISA Known Exploited Vulnerabilities (KEV):** Critical exploited CVEs and target infrastructure.
+   - Feed Endpoint: `https://www.cisa.gov/sites/default/files/feeds/known_exploited_vulnerabilities.json`
 
-### 3.3 Integration Blueprint
+### 2.3 Detailed File Structure & Implementation Steps
 
-```
-┌────────────────────────────────────────────────────────┐
-│          REAL-WORLD THREAT INTELLIGENCE SOURCES        │
-│  - ThreatFox (abuse.ch): Live C2 IPs & Malicious Ports │
-│  - Feodo Tracker: Active Botnet Command & Control      │
-│  - URLhaus: Active Malware Distribution Domains        │
-│  - CISA Known Exploited Vulnerabilities Catalog        │
-└───────────────────────────┬────────────────────────────┘
-                            │
-                            ▼
-┌────────────────────────────────────────────────────────┐
-│     @shrinivas-sn/adapter-ingestion RUNNER             │
-│  - Location: scripts/ingest_threat_intel.mjs           │
-│  - Adapters: adapters/threatfox.json, feodo.json       │
-│  - Runs: Via 1-click API endpoint or scheduled cron    │
-│  - Storage: data/threat_feeds/normalized_iocs.json     │
-└───────────────────────────┬────────────────────────────┘
-                            │
-                            ▼
-┌────────────────────────────────────────────────────────┐
-│            CYBER-THREAT DETECTION ENGINE               │
-│  - FastAPI loads IOC database into memory in set()     │
-│  - Incoming PCAP / Sniffed flows matched in O(1) time  │
-│  - Instant high-confidence alert emitted if IP matches │
-└────────────────────────────────────────────────────────┘
-```
-
-### 3.4 User Workflow (From Synthetic to Real-World)
-1. Analyst clicks **"Sync Real-World Threat Feeds"** on the dashboard.
-2. The backend triggers the `@shrinivas-sn/adapter-ingestion` runner.
-3. In under 3 seconds, 5,000+ active worldwide malware/C2 IPs are downloaded, deduped, and cached.
-4. When any real traffic flows through the data diode or PCAP is replayed, any connection to these active threat IPs triggers an immediate `CRITICAL` alert with real attribution metadata.
-
----
-
-## 4. Edge Cases & Verification Plan
-
-| Area | Edge Case | Mitigation & Assertion |
-| :--- | :--- | :--- |
-| **Feed Ingestion** | Feed source down (500/503) | `@shrinivas-sn/adapter-ingestion` records error report, retains existing cached IOCs, returns clean status code. |
-| **Feed Ingestion** | Feed schema change | Canary threshold detects missing field ratio and flags `stale` without crashing the ingestion process. |
-| **Detection Engine**| 100,000+ IOCs loaded | Store in Python `set()` or SQLite index; lookup latency stays under 0.05ms per flow. |
-| **UI Rendering** | 500+ alerts logged | Alert feed capped at latest 100 items with export to CSV/JSON available. |
-| **Typography** | Fontshare CDN latency | Fallback to `sans-serif` specified in CSS, text remains readable and black. |
-
----
-
-## 5. Git PR Execution & Verification Prompt
-
-### 5.1 Branch & Commit Info
-- **Branch:** `feat/palette-satoshi-anti-slop`
-- **Base:** `main`
-- **Commit Summary:** Complete UI de-slop, strict 4-color palette, Satoshi typography (700/400), black font color, zero emojis, zero dots, zero opacity background tints.
-
-### 5.2 Verification Prompt for Local Testing & Merging
-Below is the copy-paste prompt to verify and merge this branch:
-
+#### Step 6.1: Install Package & Create Ingestion Service
+In project root:
 ```bash
-# 1. Fetch and checkout the PR branch
-git fetch origin
-git checkout feat/palette-satoshi-anti-slop
+npm install @shrinivas-sn/adapter-ingestion --save
+```
 
-# 2. Verify backend test suite (All 24 pytest cases must pass)
-.\venv\Scripts\python -m pytest tests/ -v
+Create directory layout:
+```
+ingestion/
+├── adapters/
+│   ├── threatfox.adapter.json
+│   ├── feodotracker.adapter.json
+│   └── cisa_kev.adapter.json
+├── fixtures/
+│   └── sample_threat_feed.json
+├── runs/
+└── runner.mjs
+```
 
-# 3. Verify frontend production build (Must pass with 0 errors)
-cd dashboard
-npm install
-npm run build
+#### Step 6.2: Create Adapter Configurations (`ingestion/adapters/`)
+`feodotracker.adapter.json`:
+```json
+{
+  "host": "feodotracker.abuse.ch",
+  "version": 2,
+  "fetch": {
+    "url": "https://feodotracker.abuse.ch/downloads/ipblocklist_recommended.json",
+    "method": "GET",
+    "timeout_ms": 30000,
+    "max_records": 10000
+  },
+  "extract": {
+    "records_path": "$",
+    "fields": {
+      "ip_address": "ip_address",
+      "port": "port",
+      "malware": "malware",
+      "first_seen": "first_seen_utc",
+      "status": "status"
+    }
+  },
+  "dedupe": {
+    "primary_key": "ip_address"
+  },
+  "canary": {
+    "min_records": 10,
+    "required_fields": ["ip_address", "malware"]
+  }
+}
+```
 
-# 4. Start local servers to verify UI in browser
-# Terminal 1: Backend
-cd E:\Cyber-Threat
-.\venv\Scripts\python -m uvicorn backend.main:app --host 0.0.0.0 --port 8000
+#### Step 6.3: Ingestion Runner Script (`ingestion/runner.mjs`)
+- Executes `@shrinivas-sn/adapter-ingestion` pipeline.
+- Writes normalized IOCs to `data/threat_feeds/active_iocs.json`.
+- Emits clean report JSON with summary counts of new, changed, and active threats.
 
-# Terminal 2: Dashboard
-cd E:\Cyber-Threat\dashboard
-npx vite --force
+#### Step 6.4: Backend Integration (`backend/routes/feeds.py`)
+Add FastAPI routes:
+- `POST /api/feeds/sync`: Spawns the adapter ingestion runner asynchronously, updates the in-memory malicious IP set.
+- `GET /api/feeds/status`: Returns current feed metrics (last sync timestamp, active IOC count, source breakdown).
 
-# 5. Browser Verification Checklist:
-# - Open http://localhost:5173
-# - Verify background is solid warm cream (#FFF1D1) with NO grey/pastel tints
-# - Verify text is pure black (#000000) using Satoshi font
-# - Verify headings use weight 700 and body text uses weight 400
-# - Verify zero emojis and zero circular indicator dots on cards
-# - Trigger a simulation (e.g. DDoS Flood) and open AI Copilot drawer
-# - Verify AI Copilot drawer and Threat Evidence modal follow the exact palette
+#### Step 6.5: High-Speed O(1) Flow Correlation (`engine/threat_detector.py`)
+- Load `active_iocs.json` into a Python in-memory `set()` of `(ip, port)` and `ip`.
+- During live packet capture or PCAP replay:
+  - Check `flow.src_ip` and `flow.dst_ip` against the active IOC set in $O(1)$ time ($< 0.02\text{ ms}$).
+  - If a match is found: immediately flag as `CRITICAL` severity with threat class `Botnet C2 Beaconing (ThreatFox/Feodo Verified)`.
 
-# 6. Merge to main once verified
-git checkout main
-git merge feat/palette-satoshi-anti-slop
-git push origin main
+---
+
+## 3. Phase 7: Eliminating Heavy Python ML Models (300–400MB) & Replacing with LLM Inference Layer
+
+### 3.1 The Problem with Heavy Local ML Models
+- Storing Scikit-Learn `.pkl` / `.joblib` files and large PyTorch/TensorFlow weights bloats the project repository to 300–500MB.
+- Heavy Python ML dependencies require C-extensions (NumPy, Scipy, Scikit-learn), causing slow Docker builds, memory spikes on server deployment, and cold-start latency.
+- Statistical anomaly detection on network traffic (DDoS rate bursts, port scans, beacons) can be evaluated with deterministic mathematical algorithms in microsecond time, while semantic attack attribution is best handled by an LLM layer.
+
+### 3.2 Replacement Architecture: Lightweight Heuristics + Cloud LLM
+1. **Mathematical Feature Engine (Zero File Weight, Microsecond Speed):**
+   - **Shannon Entropy of Ports & Packet Sizes:** Identifies encrypted payloads and random port scanning.
+   - **Inter-Arrival Time (IAT) Variance & Jitter:** Detects programmatic C2 beaconing.
+   - **Asymmetric Flow Ratio ($R_{\text{asym}}$):** Detects exfiltration across unidirectional links.
+   - All written in pure, standard Python with zero heavy binary weights.
+
+2. **Cloud LLM Layer (Groq Llama 3.3 70B / OpenAI):**
+   - Replaces heavy local classification models with fast API inference (sub-500ms latency via Groq).
+   - Generates contextual incident analysis, plain-language explanations, and exact gateway firewall mitigation commands on demand.
+   - Total disk footprint: **0 MB**.
+
+3. **Deployment Benefit:**
+   - Server Docker image size drops from **1.2 GB ➔ under 120 MB**.
+   - Deployment to VPS / cloud runs in seconds with minimal RAM requirements.
+
+---
+
+## 4. Phase 8: 1-Click Frontend Live Threat Sync & Real-Time Flow Correlation
+
+### 4.1 Dashboard UI Additions (Adhering to Strict Design Rules)
+- **Top Command Bar Button:** "Sync Threat Feeds" button in `#FFF1D1` with `#00B7CD` text and crisp black border.
+- **Feed Status Pill:** "Feeds: 12,480 IOCs Active" displayed cleanly in black text.
+- **Trigger Behavior:**
+  - Clicking triggers `POST /api/feeds/sync`.
+  - Shows spinning `Loader2` during sync.
+  - Automatically updates the live feed and topology graph with real-world verified alerts.
+
+---
+
+## 5. Comprehensive Edge Cases & Test Matrix
+
+| Area | Test Case | Edge Case | Expected System Behavior |
+| :--- | :--- | :--- | :--- |
+| **Ingestion** | TC-ING-01 | Remote feed times out (HTTP 504) | Ingestion runner times out at 30s, falls back to existing cached IOCs, logs clean warning without crash. |
+| **Ingestion** | TC-ING-02 | Feed structure changes (shape drift) | Canary in `@shrinivas-sn/adapter-ingestion` catches missing field ratio, flags `stale`, and preserves previous store. |
+| **Ingestion** | TC-ING-03 | Duplicate IPs across ThreatFox & Feodo | Content-hash deduplication merges duplicates into single record with combined tags. |
+| **Detection** | TC-DET-01 | 50,000 active IOCs in memory | Python hash set lookup remains $< 0.05\text{ ms}$ per packet flow; zero throughput bottleneck. |
+| **Detection** | TC-DET-02 | Benign internal IP collides with public feed | Whitelist filter (`192.168.0.0/16`, `10.0.0.0/8`) prevents false alerts on internal workstations. |
+| **LLM Layer** | TC-LLM-01 | Cloud Groq API key missing or rate-limited | Engine automatically falls back to deterministic rule explanation; zero user disruption. |
+
+---
+
+## 6. Prompt to Fetch Forked PR & Start Executing
+
+Give the prompt below to an AI assistant or run it directly in your terminal to fetch this forked PR and immediately begin executing Phase 6 and Phase 7:
+
+```markdown
+You are working on the repository `Vivek-Kamannavar/Cyber-Threat` located at `E:\Cyber-Threat`.
+The UI overhaul (4-color palette, Satoshi font 700/400, zero emojis, zero dots, zero tints) has been completed and pushed to PR #3 (`https://github.com/Vivek-Kamannavar/Cyber-Threat/pull/3`) on the fork branch `feat/palette-satoshi-anti-slop`.
+
+YOUR OBJECTIVE:
+1. Fetch and checkout the branch `feat/palette-satoshi-anti-slop` from `fork` (or `origin`).
+2. Read the master blueprint at `FINAL_PLAN.md`.
+3. Execute Phase 6 and Phase 7 as specified in `FINAL_PLAN.md`:
+   - Install `@shrinivas-sn/adapter-ingestion` and set up the threat feed adapters for ThreatFox and Feodo Tracker.
+   - Create `ingestion/runner.mjs` and connect the FastAPI `/api/feeds/sync` endpoint.
+   - Wire the in-memory IOC set into `engine/threat_detector.py` for O(1) flow correlation.
+   - Deprecate heavy Python ML files in favor of lightweight mathematical heuristics + Groq LLM inference layer to prepare for lightweight server deployment.
+   - Add the "Sync Threat Feeds" button to the frontend header strictly following the Satoshi font and 4-color palette rules.
+4. Verify backend unit tests and frontend production build pass with zero errors.
 ```
