@@ -220,7 +220,7 @@ export default function ManualInspectionPanel({ onInspectionComplete }) {
             </div>
           </div>
           <p className="text-cyan-300 text-[11px] font-medium pt-1">
-            ✨ Our upgraded Multi-Vector Engine now combines brand-spoofing NLP, high-risk TLD analysis, phishing path detection, email typosquatting, and toll fraud pattern scanning to detect threats instantly!
+            Our upgraded Multi-Vector Engine now combines brand-spoofing NLP, high-risk TLD analysis, phishing path detection, email typosquatting, and toll fraud pattern scanning to detect threats instantly!
           </p>
         </div>
       )}
@@ -401,7 +401,7 @@ export default function ManualInspectionPanel({ onInspectionComplete }) {
                       ? 'bg-red-900/90 text-red-100 border border-red-500/50 shadow-sm'
                       : 'bg-emerald-900/90 text-emerald-100 border border-emerald-500/50 shadow-sm'
                   }`}>
-                    {result.verdict.is_threat ? '⚠️ THREAT DETECTED' : '✅ CLEAN & SAFE'}
+                    {result.verdict.is_threat ? 'THREAT DETECTED' : 'CLEAN & SAFE'}
                   </span>
 
                   {result.verdict.is_threat && (
@@ -439,7 +439,7 @@ export default function ManualInspectionPanel({ onInspectionComplete }) {
 
                 <div className="mt-3 p-3.5 rounded-xl bg-slate-900/90 border border-amber-500/40 shadow-md">
                   <div className="flex items-center gap-1.5 text-[11px] font-bold text-amber-300 uppercase tracking-wider mb-1">
-                    <span>💡 Reason Explained (Like Telling a Kid):</span>
+                    <span>Reason Explained (Like Telling a Kid):</span>
                   </div>
                   <p className="text-sm sm:text-base text-white font-semibold leading-relaxed">
                     {(() => {

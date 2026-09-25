@@ -7,134 +7,110 @@ export default function ThreatDetailsModal({ alert, onClose }) {
   const fid = alert.flow_identifier || {};
   const ev = alert.supporting_evidence_feature || {};
 
-  const srcLabel = fid.src_label || (fid.src_ip?.startswith?.('192.168.') ? 'Internal SCADA Host' : 'External Host');
-  const dstLabel = fid.dst_label || 'External Endpoint / Web Server';
+  const srcLabel = fid.src_label || (fid.src_ip?.startsWith?.('192.168.') ? 'SCADA Host' : 'Host');
+  const dstLabel = fid.dst_label || 'External Endpoint';
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
-      <div className="bg-cyber-card border border-cyber-border rounded-2xl w-full max-w-3xl max-h-[90vh] flex flex-col overflow-hidden shadow-2xl glow-accent">
+    <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4">
+      <div className="bg-[#FFF1D1] border border-black rounded-lg w-full max-w-2xl max-h-[90vh] flex flex-col overflow-hidden shadow-2xl">
         
-        {/* Modal Header */}
-        <div className="p-5 border-b border-cyber-border flex items-center justify-between bg-slate-900/60">
-          <div className="flex items-center gap-3">
-            <div className="p-2 bg-red-950/80 border border-red-500/40 rounded-lg">
-              <ShieldAlert className="w-6 h-6 text-red-400" />
+        {/* Header */}
+        <div className="p-3.5 border-b border-black flex items-center justify-between bg-[#FFF1D1]">
+          <div className="flex items-center gap-2.5">
+            <div className="p-1.5 bg-[#FFF1D1] text-[#DF301C] rounded border border-black">
+              <ShieldAlert className="w-4 h-4" />
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <span className="text-sm font-mono text-cyan-400 font-bold">{alert.alert_id}</span>
-                <span className="text-xs font-mono font-semibold text-white bg-slate-800 px-2 py-0.5 rounded">
+                <span className="text-xs font-bold text-black">{alert.alert_id}</span>
+                <span className="text-[10px] font-bold text-[#FFF1D1] bg-[#DF301C] px-2 py-0.5 rounded uppercase">
                   {alert.threat_class}
                 </span>
               </div>
-              <p className="text-xs text-slate-400 font-mono mt-0.5">
-                Timestamp: {alert.timestamp} | Confidence: {(alert.confidence_score * 100).toFixed(0)}%
+              <p className="text-[11px] text-black font-normal mt-0.5">
+                Timestamp: {alert.timestamp} | Score: {(alert.confidence_score * 100).toFixed(0)}%
               </p>
             </div>
           </div>
           <button
             onClick={onClose}
-            className="p-1.5 text-slate-400 hover:text-white bg-slate-800 hover:bg-slate-700 rounded-lg transition-colors"
+            className="p-1 text-black bg-[#FFF1D1] border border-black rounded transition-colors"
           >
-            <X className="w-5 h-5" />
+            <X className="w-4 h-4" />
           </button>
         </div>
 
-        {/* Modal Content Scrollable Area */}
-        <div className="p-6 overflow-y-auto space-y-5">
-
-          {/* Kid-Friendly Simple Explanation Callout */}
-          <div className="bg-gradient-to-r from-amber-950/50 to-orange-950/40 border border-amber-500/50 p-4 rounded-xl shadow-md">
-            <div className="flex items-center gap-2 text-amber-300 font-bold text-xs uppercase tracking-wider mb-1.5">
-              <span>💡 Simple Explanation (Like Telling a Small Kid):</span>
+        {/* Content */}
+        <div className="p-4 overflow-y-auto space-y-3.5 text-xs text-black font-normal">
+          {/* Plain-Language Explanation */}
+          <div className="bg-[#FFF1D1] border border-black p-3 rounded-lg space-y-1">
+            <div className="text-[10px] font-bold uppercase tracking-wider text-black">
+              Plain-Language Explanation
             </div>
-            <p className="text-white text-sm font-semibold leading-relaxed">
-              {(() => {
-                const raw = ev.reason || '';
-                if (raw.includes('Shannon Entropy') || raw.includes('flow burst') || alert.threat_class?.includes('DDoS')) {
-                  return 'A huge crowd of robot computers is shouting at our server all at once so nobody else can get in — just like 100 people trying to push through a tiny classroom door at the exact same second!';
-                }
-                if (raw.includes('inter-arrival') || alert.threat_class?.includes('C2')) {
-                  return 'A secret bad program hiding inside is quietly whispering to a hacker\'s computer on a timer like a ticking clock, waiting for secret evil instructions.';
-                }
-                if (raw.includes('Entropy') || raw.includes('n-gram') || alert.threat_class?.includes('DGA')) {
-                  return 'The computer is asking for weird scrambled secret-code website names (like \'x9z8q7w6\'), which hackers use to sneak stolen secrets out without anyone noticing.';
-                }
-                if (raw.includes('JA3') || alert.threat_class?.includes('Malware')) {
-                  return 'A dangerous computer virus was caught trying to wear a fake disguise to sneak past the security guards.';
-                }
-                if (raw.includes('fan-out') || alert.threat_class?.includes('Scanning')) {
-                  return 'A sneaky stranger is walking around trying to wiggle every single doorknob and window on our house to see if any door was left unlocked.';
-                }
-                if (raw.includes('asymmetric') || alert.threat_class?.includes('Exfiltration')) {
-                  return 'Someone is sneaking out a giant backpack stuffed with private files and secret photos through the back door!';
-                }
-                return raw || 'A strange computer activity was spotted!';
-              })()}
+            <p className="text-xs text-black font-normal leading-relaxed">
+              {ev.reason || ev.technical_reason || "Anomalous traffic signature flagged by automated detection heuristic."}
             </p>
           </div>
 
-          {/* Device & Website Identification Banner */}
-          <div className="bg-slate-950 p-4 rounded-xl border border-slate-800">
-            <h3 className="text-xs font-mono text-slate-400 uppercase tracking-wider mb-3 flex items-center gap-1.5">
-              <Cpu className="w-4 h-4 text-cyan-400" /> Endpoint Device & Website Domain Identity
+          {/* Endpoint Identity */}
+          <div className="bg-[#FFF1D1] p-3 rounded-lg border border-black space-y-2.5">
+            <h3 className="text-[10px] text-black uppercase tracking-wider flex items-center gap-1.5 font-bold">
+              <Cpu className="w-3.5 h-3.5 text-[#00B7CD]" /> Endpoint Telemetry
             </h3>
             
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 font-mono text-xs mb-4">
-              {/* Source Device */}
-              <div className="bg-cyan-950/40 border border-cyan-500/30 p-3 rounded-lg">
-                <div className="text-[10px] text-cyan-400 uppercase font-bold flex items-center gap-1 mb-1">
-                  <Server className="w-3.5 h-3.5" /> SOURCE DEVICE IDENTITY
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+              <div className="bg-[#FFF1D1] border border-black p-2.5 rounded-lg space-y-0.5">
+                <div className="text-[10px] text-black uppercase font-bold flex items-center gap-1">
+                  <Server className="w-3 h-3 text-[#00B7CD]" /> SOURCE
                 </div>
-                <div className="text-white font-bold text-sm">{srcLabel}</div>
-                <div className="text-cyan-300 text-xs mt-1">IP: {fid.src_ip} | Port: {fid.src_port}</div>
+                <div className="text-black font-bold text-xs">{srcLabel}</div>
+                <div className="text-black text-[11px] font-normal">IP: {fid.src_ip}:{fid.src_port}</div>
               </div>
 
-              {/* Destination Website */}
-              <div className="bg-emerald-950/40 border border-emerald-500/30 p-3 rounded-lg">
-                <div className="text-[10px] text-emerald-400 uppercase font-bold flex items-center gap-1 mb-1">
-                  <Globe className="w-3.5 h-3.5" /> DESTINATION WEBSITE / SERVICE
+              <div className="bg-[#FFF1D1] border border-black p-2.5 rounded-lg space-y-0.5">
+                <div className="text-[10px] text-black uppercase font-bold flex items-center gap-1">
+                  <Globe className="w-3 h-3 text-[#FF9100]" /> DESTINATION
                 </div>
-                <div className="text-white font-bold text-sm">{dstLabel}</div>
-                <div className="text-emerald-300 text-xs mt-1">IP: {fid.dst_ip} | Port: {fid.dst_port} [{fid.protocol}]</div>
+                <div className="text-black font-bold text-xs">{dstLabel}</div>
+                <div className="text-black text-[11px] font-normal">IP: {fid.dst_ip}:{fid.dst_port} [{fid.protocol}]</div>
               </div>
             </div>
 
-            {/* 5-Tuple Raw Grid */}
-            <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 font-mono text-xs">
-              <div className="bg-slate-900 p-2 rounded">
-                <div className="text-[10px] text-slate-500">SOURCE IP</div>
-                <div className="text-cyan-300 font-bold">{fid.src_ip}</div>
+            {/* 5-Tuple Box */}
+            <div className="grid grid-cols-2 sm:grid-cols-5 gap-1.5 text-[11px] text-center">
+              <div className="border border-black bg-[#FFF1D1] p-1.5 rounded">
+                <div className="text-[10px] text-black font-bold">SRC IP</div>
+                <div className="text-black font-normal truncate">{fid.src_ip}</div>
               </div>
-              <div className="bg-slate-900 p-2 rounded">
-                <div className="text-[10px] text-slate-500">SRC PORT</div>
-                <div className="text-slate-200">{fid.src_port}</div>
+              <div className="border border-black bg-[#FFF1D1] p-1.5 rounded">
+                <div className="text-[10px] text-black font-bold">SPORT</div>
+                <div className="text-black font-normal">{fid.src_port}</div>
               </div>
-              <div className="bg-slate-900 p-2 rounded">
-                <div className="text-[10px] text-slate-500">DEST IP</div>
-                <div className="text-emerald-300 font-bold">{fid.dst_ip}</div>
+              <div className="border border-black bg-[#FFF1D1] p-1.5 rounded">
+                <div className="text-[10px] text-black font-bold">DST IP</div>
+                <div className="text-black font-normal truncate">{fid.dst_ip}</div>
               </div>
-              <div className="bg-slate-900 p-2 rounded">
-                <div className="text-[10px] text-slate-500">DEST PORT</div>
-                <div className="text-slate-200">{fid.dst_port}</div>
+              <div className="border border-black bg-[#FFF1D1] p-1.5 rounded">
+                <div className="text-[10px] text-black font-bold">DPORT</div>
+                <div className="text-black font-normal">{fid.dst_port}</div>
               </div>
-              <div className="bg-slate-900 p-2 rounded">
-                <div className="text-[10px] text-slate-500">PROTOCOL</div>
-                <div className="text-amber-300 font-bold">{fid.protocol}</div>
+              <div className="border border-black bg-[#FFF1D1] p-1.5 rounded">
+                <div className="text-[10px] text-black font-bold">PROTO</div>
+                <div className="text-black font-normal">{fid.protocol}</div>
               </div>
             </div>
           </div>
 
-          {/* Feature Evidence Key-Value Grid */}
-          <div>
-            <h3 className="text-xs font-mono text-slate-400 uppercase tracking-wider mb-3 flex items-center gap-1.5">
-              <CheckCircle className="w-4 h-4 text-emerald-400" /> Feature Evidence & Mathematical Artifacts
+          {/* Evidence Grid */}
+          <div className="space-y-1.5">
+            <h3 className="text-[10px] text-black uppercase tracking-wider flex items-center gap-1.5 font-bold">
+              <CheckCircle className="w-3.5 h-3.5 text-[#00B7CD]" /> Feature Metrics
             </h3>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 font-mono text-xs">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
               {Object.entries(ev).map(([key, val]) => (
-                <div key={key} className="bg-slate-900/60 p-3 rounded-lg border border-slate-800">
-                  <div className="text-[10px] text-slate-400 uppercase tracking-wider">{key.replace(/_/g, ' ')}</div>
-                  <div className="text-slate-200 font-semibold mt-1 break-all">
+                <div key={key} className="bg-[#FFF1D1] p-2 rounded-lg border border-black">
+                  <div className="text-[10px] text-black uppercase font-bold">{key.replace(/_/g, ' ')}</div>
+                  <div className="text-black font-normal mt-0.5 break-all text-xs">
                     {typeof val === 'object' ? JSON.stringify(val) : String(val)}
                   </div>
                 </div>
@@ -142,24 +118,24 @@ export default function ThreatDetailsModal({ alert, onClose }) {
             </div>
           </div>
 
-          {/* Standardized JSON Record Box */}
-          <div>
-            <h3 className="text-xs font-mono text-slate-400 uppercase tracking-wider mb-2 flex items-center gap-1.5">
-              <Code className="w-4 h-4 text-cyan-400" /> Standardized JSON Alert Record
+          {/* JSON Box */}
+          <div className="space-y-1.5">
+            <h3 className="text-[10px] text-black uppercase tracking-wider flex items-center gap-1.5 font-bold">
+              <Code className="w-3.5 h-3.5 text-black" /> Alert JSON
             </h3>
-            <pre className="bg-slate-950 text-cyan-300 font-mono text-xs p-4 rounded-xl border border-slate-800 overflow-x-auto">
+            <pre className="bg-[#FFF1D1] text-black p-3 rounded-lg border border-black overflow-x-auto text-[11px] leading-tight font-normal">
               {JSON.stringify(alert, null, 2)}
             </pre>
           </div>
         </div>
 
-        {/* Modal Footer */}
-        <div className="p-4 border-t border-cyber-border bg-slate-900/60 flex justify-end">
+        {/* Footer */}
+        <div className="p-3 border-t border-black bg-[#FFF1D1] flex justify-end">
           <button
             onClick={onClose}
-            className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-lg text-xs font-mono transition-colors"
+            className="px-4 py-1.5 bg-[#FFF1D1] border border-black text-black rounded text-xs font-normal transition-colors"
           >
-            Close Evidence Inspector
+            Close
           </button>
         </div>
       </div>

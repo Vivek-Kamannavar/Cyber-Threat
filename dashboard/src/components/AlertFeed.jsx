@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { 
-  ShieldAlert, Terminal, ChevronRight, Filter, Search, Download, 
-  Sparkles, CheckCircle2, Server, Globe, ExternalLink 
+  ShieldAlert, ChevronRight, Search, Download, 
+  Sparkles, Server, Globe, ArrowRight 
 } from 'lucide-react';
 
 export default function AlertFeed({ alerts, onSelectAlert, onOpenAiCopilot }) {
@@ -78,40 +78,54 @@ export default function AlertFeed({ alerts, onSelectAlert, onOpenAiCopilot }) {
   };
 
   return (
-    <div className="bg-[#151f32] border border-[#23324d] rounded-xl p-5 mb-6 shadow-sm">
+    <div className="bg-[#FFF1D1] border border-black rounded-lg p-3.5 mb-2.5">
       {/* Top Header & Actions */}
-      <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4 mb-4">
-        <div className="flex items-center gap-2.5">
-          <ShieldAlert className="w-5 h-5 text-rose-400" />
-          <h2 className="text-sm font-semibold text-slate-100">
-            Live Incident Stream ({filteredAlerts.length} of {alerts.length})
-          </h2>
+      <div className="flex flex-col gap-2.5 mb-3">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <ShieldAlert className="w-4 h-4 text-[#DF301C]" />
+            <h2 className="text-xs font-bold text-black tracking-tight">
+              Live Alert Stream ({filteredAlerts.length} of {alerts.length})
+            </h2>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <button
+              onClick={exportToCsv}
+              className="flex items-center gap-1 px-2.5 py-1 text-xs font-normal rounded border border-black text-black bg-[#FFF1D1] transition-colors"
+            >
+              <Download className="w-3 h-3 text-black" /> CSV
+            </button>
+            <button
+              onClick={exportToJson}
+              className="px-2.5 py-1 text-xs font-normal rounded border border-black text-black bg-[#FFF1D1] transition-colors"
+            >
+              JSON
+            </button>
+          </div>
         </div>
 
-        {/* Action Controls: Search, Filters & Export */}
-        <div className="flex flex-wrap items-center gap-2.5 w-full lg:w-auto">
-          {/* Search Input */}
-          <div className="relative flex-1 sm:w-56">
-            <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+        {/* Search & Filters */}
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="relative flex-1 min-w-[150px]">
+            <Search className="w-3.5 h-3.5 text-black absolute left-2.5 top-1/2 -translate-y-1/2" />
             <input
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search IP, host, or alert..."
-              className="w-full bg-[#0b1120] border border-[#23324d] rounded-lg pl-8 pr-3 py-1.5 text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:border-sky-500"
+              placeholder="Search alert, IP..."
+              className="w-full bg-[#FFF1D1] border border-black rounded pl-7 pr-2.5 py-1 text-xs text-black placeholder-black font-normal focus:outline-none"
             />
           </div>
 
-          {/* Severity Filter */}
-          <div className="flex bg-[#0b1120] p-1 rounded-lg border border-[#23324d] text-[11px]">
-            {['ALL', 'CRITICAL', 'HIGH', 'MEDIUM'].map(sev => (
+          <div className="flex border border-black rounded text-xs font-normal overflow-hidden">
+            {['ALL', 'CRITICAL', 'HIGH'].map(sev => (
               <button
                 key={sev}
                 onClick={() => setSelectedSeverity(sev)}
-                className={`px-2.5 py-1 rounded font-medium ${
+                className={`px-2 py-0.5 transition-colors ${
                   selectedSeverity === sev 
-                    ? 'bg-slate-800 text-sky-400 shadow-sm' 
-                    : 'text-slate-400 hover:text-slate-200'
+                    ? 'bg-black text-[#FFF1D1]' 
+                    : 'text-black bg-[#FFF1D1]'
                 }`}
               >
                 {sev}
@@ -119,112 +133,93 @@ export default function AlertFeed({ alerts, onSelectAlert, onOpenAiCopilot }) {
             ))}
           </div>
 
-          {/* Threat Class Dropdown */}
           <select
             value={selectedClass}
             onChange={(e) => setSelectedClass(e.target.value)}
-            className="bg-[#0b1120] border border-[#23324d] text-xs text-slate-200 rounded-lg px-2.5 py-1.5 focus:outline-none focus:border-sky-500"
+            className="bg-[#FFF1D1] border border-black text-xs text-black font-normal rounded px-2 py-1 focus:outline-none"
           >
             {threatClasses.map(tc => (
               <option key={tc} value={tc}>{tc === 'ALL' ? 'All Classes' : tc}</option>
             ))}
           </select>
-
-          {/* Export Buttons */}
-          <button
-            onClick={exportToCsv}
-            className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 border border-[#23324d]"
-            title="Export filtered alerts to CSV"
-          >
-            <Download className="w-3.5 h-3.5" /> CSV
-          </button>
-          <button
-            onClick={exportToJson}
-            className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 border border-[#23324d]"
-            title="Export filtered alerts to JSON"
-          >
-            JSON
-          </button>
         </div>
       </div>
 
       {/* Alert Cards Feed */}
       {filteredAlerts.length === 0 ? (
-        <div className="text-center py-12 bg-[#0b1120] border border-dashed border-[#23324d] rounded-xl">
-          <ShieldAlert className="w-8 h-8 text-slate-600 mx-auto mb-2" />
-          <p className="text-xs text-slate-400">No threat alerts matching current filter criteria.</p>
+        <div className="text-center py-10 bg-[#FFF1D1] border border-dashed border-black rounded-lg">
+          <ShieldAlert className="w-6 h-6 text-black mx-auto mb-1" />
+          <p className="text-xs text-black font-normal">No alerts matching criteria.</p>
         </div>
       ) : (
-        <div className="space-y-2.5 max-h-[500px] overflow-y-auto pr-1">
+        <div className="space-y-2 max-h-[500px] overflow-y-auto pr-1">
           {filteredAlerts.slice().reverse().map((alert, idx) => {
             const fid = alert.flow_identifier || {};
             const evidence = alert.supporting_evidence_feature || {};
             const sev = getSeverity(alert.confidence_score);
 
-            const srcLabel = fid.src_label || (fid.src_ip?.startsWith('192.168.') ? 'Internal SCADA Host' : 'Internal Node');
-            const dstLabel = fid.dst_label || 'External Endpoint';
+            const srcLabel = fid.src_label || (fid.src_ip?.startsWith('192.168.') ? 'Internal SCADA' : 'Host');
+            const dstLabel = fid.dst_label || 'External';
 
             return (
               <div
                 key={`${alert.alert_id}-${idx}`}
-                className="bg-[#111a2d] border border-[#23324d] hover:border-slate-600 rounded-xl p-3.5 transition-colors flex flex-col md:flex-row md:items-center justify-between gap-3"
+                className="bg-[#FFF1D1] border border-black rounded-lg p-3 flex flex-col gap-2"
               >
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2.5 mb-1.5 flex-wrap">
-                    <span className="text-xs font-mono font-bold text-sky-400">{alert.alert_id}</span>
-                    <span className={`text-[10px] font-bold font-mono px-2 py-0.5 rounded uppercase ${
-                      sev === 'CRITICAL' ? 'bg-rose-950 text-rose-300 border border-rose-800/60' :
-                      sev === 'HIGH' ? 'bg-amber-950 text-amber-300 border border-amber-800/60' :
-                      'bg-emerald-950 text-emerald-300 border border-emerald-800/60'
-                    }`}>
-                      {sev}
-                    </span>
-                    <span className="text-xs font-medium text-slate-100 bg-slate-900 px-2 py-0.5 rounded border border-[#23324d]">
-                      {alert.threat_class}
-                    </span>
-                    <span className="text-[11px] text-slate-400 font-mono ml-auto">{alert.timestamp}</span>
-                  </div>
-
-                  {/* Flow 5-Tuple Identifier */}
-                  <div className="text-xs font-mono text-slate-300 flex flex-wrap items-center gap-2 mb-2 bg-[#0b1120] px-3 py-1.5 rounded-lg border border-[#23324d]">
-                    <div className="flex items-center gap-1.5 text-sky-300">
-                      <Server className="w-3.5 h-3.5 text-sky-400" />
-                      <span className="font-semibold">{srcLabel}</span>
-                      <span className="text-slate-400 text-[11px]">({fid.src_ip}:{fid.src_port})</span>
-                    </div>
-
-                    <span className="text-slate-500">➔</span>
-
-                    <div className="flex items-center gap-1.5 text-slate-300">
-                      <Globe className="w-3.5 h-3.5 text-slate-400" />
-                      <span className="font-semibold">{dstLabel}</span>
-                      <span className="text-slate-400 text-[11px]">({fid.dst_ip}:{fid.dst_port})</span>
-                    </div>
-
-                    <span className="text-slate-500 font-semibold ml-auto">{fid.protocol}</span>
-                  </div>
-
-                  {/* Non-technical human reason */}
-                  <p className="text-xs text-slate-300 line-clamp-1">
-                    {evidence.reason || evidence.technical_reason || "Anomalous traffic signature flagged by detection heuristic."}
-                  </p>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="text-xs font-bold text-black">{alert.alert_id}</span>
+                  <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded uppercase ${
+                    sev === 'CRITICAL' ? 'bg-[#DF301C] text-[#FFF1D1]' :
+                    sev === 'HIGH' ? 'bg-[#FF9100] text-black' :
+                    'bg-[#00B7CD] text-black'
+                  }`}>
+                    {sev}
+                  </span>
+                  <span className="text-xs font-bold text-black">
+                    {alert.threat_class}
+                  </span>
+                  <span className="text-[11px] text-black font-normal ml-auto">{alert.timestamp}</span>
                 </div>
 
-                {/* Right Action Buttons */}
-                <div className="flex items-center gap-2 shrink-0">
+                {/* 5-Tuple Box */}
+                <div className="text-xs font-normal text-black flex flex-wrap items-center gap-2 bg-[#FFF1D1] px-2.5 py-1 rounded border border-black">
+                  <div className="flex items-center gap-1">
+                    <Server className="w-3 h-3 text-[#00B7CD]" />
+                    <span className="font-bold">{srcLabel}</span>
+                    <span className="text-black text-[11px]">({fid.src_ip}:{fid.src_port})</span>
+                  </div>
+
+                  <ArrowRight className="w-3 h-3 text-black" />
+
+                  <div className="flex items-center gap-1">
+                    <Globe className="w-3 h-3 text-black" />
+                    <span className="font-bold">{dstLabel}</span>
+                    <span className="text-black text-[11px]">({fid.dst_ip}:{fid.dst_port})</span>
+                  </div>
+
+                  <span className="text-black text-[11px] ml-auto font-bold">{fid.protocol}</span>
+                </div>
+
+                {/* Reason description */}
+                <p className="text-xs text-black line-clamp-1 font-normal">
+                  {evidence.reason || evidence.technical_reason || "Anomalous traffic signature flagged."}
+                </p>
+
+                {/* Action Buttons */}
+                <div className="flex items-center gap-2 pt-0.5 justify-end">
                   <button
                     onClick={() => onOpenAiCopilot && onOpenAiCopilot(alert)}
-                    className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg bg-sky-500/10 hover:bg-sky-500/20 text-sky-400 border border-sky-500/30 transition-colors"
+                    className="flex items-center gap-1 px-2.5 py-1 text-xs font-normal rounded bg-[#00B7CD] text-black border border-black transition-colors"
                   >
-                    <Sparkles className="w-3.5 h-3.5" />
+                    <Sparkles className="w-3 h-3" />
                     AI Copilot
                   </button>
                   <button
                     onClick={() => onSelectAlert && onSelectAlert(alert)}
-                    className="flex items-center gap-1 px-3 py-1.5 text-xs font-medium rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 border border-[#23324d] transition-colors"
+                    className="flex items-center gap-1 px-2.5 py-1 text-xs font-normal rounded border border-black text-black bg-[#FFF1D1] transition-colors"
                   >
-                    Deep Dive
-                    <ChevronRight className="w-3.5 h-3.5" />
+                    Evidence
+                    <ChevronRight className="w-3 h-3" />
                   </button>
                 </div>
               </div>

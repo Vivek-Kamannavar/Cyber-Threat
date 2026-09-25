@@ -31,44 +31,43 @@ export default function NetworkTopologyGraph({ alerts }) {
 
   const internalNodes = topology.nodes.filter(n => n.is_internal);
   const externalNodes = topology.nodes.filter(n => !n.is_internal);
-  const hasActiveThreat = topology.nodes.some(n => n.is_threat);
 
   return (
-    <div className="bg-[#151f32] border border-[#23324d] rounded-xl p-5 mb-6 shadow-sm">
-      <div className="flex items-center justify-between mb-4">
-        <div className="flex items-center gap-2.5">
-          <Network className="w-5 h-5 text-sky-400" />
-          <h2 className="text-sm font-semibold text-slate-100">
-            Real-Time Unidirectional Network Topology
+    <div className="bg-[#FFF1D1] border border-black rounded-lg p-3.5 mb-2.5">
+      <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center gap-2">
+          <Network className="w-4 h-4 text-[#00B7CD]" />
+          <h2 className="text-xs font-bold text-black tracking-tight">
+            Network Topology
           </h2>
-          <span className="text-[11px] font-mono text-slate-400 bg-slate-900 px-2 py-0.5 rounded border border-[#23324d]">
-            {topology.total_active_flows} Active Flows (60s Window)
+          <span className="text-[11px] font-normal text-black bg-[#FFF1D1] px-2 py-0.5 rounded border border-black">
+            {topology.total_active_flows} Flows Active
           </span>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2">
           <button
             onClick={handleManualRefresh}
-            className="p-1.5 rounded-lg hover:bg-slate-800 text-slate-400 hover:text-slate-200 transition-colors"
+            className="p-1 rounded bg-[#FFF1D1] border border-black text-black transition-colors"
             title="Refresh Topology"
           >
-            <RefreshCw className={`w-3.5 h-3.5 ${isRefreshing ? 'animate-spin text-sky-400' : ''}`} />
+            <RefreshCw className={`w-3.5 h-3.5 ${isRefreshing ? 'animate-spin text-[#00B7CD]' : ''}`} />
           </button>
-          <span className="text-xs font-medium text-emerald-400 flex items-center gap-1.5 bg-emerald-950/40 px-2.5 py-1 rounded-full border border-emerald-800/40">
-            <Shield className="w-3.5 h-3.5" /> Hardware Data Diode Enforced
+          <span className="text-[11px] font-normal text-black flex items-center gap-1.5 bg-[#FFF1D1] px-2 py-0.5 rounded border border-[#00B7CD]">
+            <Shield className="w-3 h-3 text-[#00B7CD]" /> Data Diode Active
           </span>
         </div>
       </div>
 
-      <div className="bg-[#0b1120] border border-[#23324d] rounded-xl p-5 overflow-hidden">
-        <div className="grid grid-cols-1 md:grid-cols-7 gap-4 items-center">
+      <div className="bg-[#FFF1D1] border border-black rounded-lg p-3">
+        <div className="grid grid-cols-1 md:grid-cols-7 gap-3 items-center">
           
-          {/* Subnet 1: Protected OT/SCADA Zone (Columns 1-3) */}
-          <div className="md:col-span-3 bg-[#151f32]/70 border border-[#23324d] rounded-xl p-4 flex flex-col justify-between min-h-[160px]">
-            <div className="flex items-center justify-between border-b border-[#23324d] pb-2 mb-3">
-              <span className="text-[11px] font-bold uppercase tracking-wider text-sky-400">
+          {/* Subnet 1: Protected SCADA Zone (Columns 1-3) */}
+          <div className="md:col-span-3 bg-[#FFF1D1] border border-black rounded-lg p-3 flex flex-col justify-between min-h-[140px]">
+            <div className="flex items-center justify-between border-b border-black pb-1.5 mb-2.5">
+              <span className="text-[11px] font-bold text-black">
                 Protected SCADA Enclave
               </span>
-              <span className="text-[10px] text-slate-400 font-mono">Tx Fiber Only</span>
+              <span className="text-[10px] text-black font-normal">Tx Fiber Only</span>
             </div>
 
             <div className="grid grid-cols-2 gap-2">
@@ -76,25 +75,25 @@ export default function NetworkTopologyGraph({ alerts }) {
                 internalNodes.slice(0, 4).map(node => (
                   <div
                     key={node.id}
-                    className={`p-2.5 rounded-lg border text-xs flex items-center gap-2 ${
+                    className={`p-2 rounded border text-xs flex items-center gap-2 bg-[#FFF1D1] ${
                       node.is_threat
-                        ? 'bg-rose-950/40 border-rose-800 text-rose-300'
-                        : 'bg-slate-900 border-[#23324d] text-slate-200'
+                        ? 'border-2 border-[#DF301C] text-black'
+                        : 'border border-black text-black'
                     }`}
                   >
                     {node.is_threat ? (
-                      <AlertTriangle className="w-4 h-4 text-rose-400 shrink-0" />
+                      <AlertTriangle className="w-3.5 h-3.5 text-[#DF301C] shrink-0" />
                     ) : (
-                      <Server className="w-4 h-4 text-sky-400 shrink-0" />
+                      <Server className="w-3.5 h-3.5 text-[#00B7CD] shrink-0" />
                     )}
                     <div className="overflow-hidden">
-                      <div className="font-mono font-semibold truncate text-[11px]">{node.id}</div>
-                      <div className="text-[10px] text-slate-400 truncate">{node.label}</div>
+                      <div className="font-bold truncate text-[11px] text-black">{node.id}</div>
+                      <div className="text-[10px] text-black truncate font-normal">{node.label}</div>
                     </div>
                   </div>
                 ))
               ) : (
-                <div className="col-span-2 text-center py-4 text-xs text-slate-500">
+                <div className="col-span-2 text-center py-4 text-xs text-black font-normal">
                   Awaiting internal host traffic...
                 </div>
               )}
@@ -103,26 +102,21 @@ export default function NetworkTopologyGraph({ alerts }) {
 
           {/* Diode Barrier Center (Column 4) */}
           <div className="md:col-span-1 flex flex-col items-center justify-center py-2">
-            <div className="relative flex flex-col items-center">
-              <div className="w-8 h-8 rounded-full bg-emerald-950 border border-emerald-500/50 flex items-center justify-center text-emerald-400 shadow-sm">
-                <ArrowRight className="w-4 h-4" />
-              </div>
-              <span className="text-[10px] font-semibold text-emerald-400 mt-1 uppercase tracking-tight text-center">
-                1-Way Diode
-              </span>
-              <span className="text-[9px] text-slate-500 text-center font-mono">
-                No Return Path
-              </span>
+            <div className="w-8 h-8 rounded border border-black bg-[#00B7CD] flex items-center justify-center text-black">
+              <ArrowRight className="w-4 h-4" />
             </div>
+            <span className="text-[10px] font-bold text-black mt-1 uppercase tracking-tight text-center">
+              1-Way
+            </span>
           </div>
 
-          {/* Subnet 2: External / Monitoring Zone (Columns 5-7) */}
-          <div className="md:col-span-3 bg-[#151f32]/70 border border-[#23324d] rounded-xl p-4 flex flex-col justify-between min-h-[160px]">
-            <div className="flex items-center justify-between border-b border-[#23324d] pb-2 mb-3">
-              <span className="text-[11px] font-bold uppercase tracking-wider text-slate-300">
-                External / Cloud Perimeters
+          {/* Subnet 2: External Monitoring Zone (Columns 5-7) */}
+          <div className="md:col-span-3 bg-[#FFF1D1] border border-black rounded-lg p-3 flex flex-col justify-between min-h-[140px]">
+            <div className="flex items-center justify-between border-b border-black pb-1.5 mb-2.5">
+              <span className="text-[11px] font-bold text-black">
+                External Perimeters
               </span>
-              <span className="text-[10px] text-slate-400 font-mono">Passive Rx</span>
+              <span className="text-[10px] text-black font-normal">Passive Rx</span>
             </div>
 
             <div className="grid grid-cols-2 gap-2">
@@ -130,21 +124,21 @@ export default function NetworkTopologyGraph({ alerts }) {
                 externalNodes.slice(0, 4).map(node => (
                   <div
                     key={node.id}
-                    className={`p-2.5 rounded-lg border text-xs flex items-center gap-2 ${
+                    className={`p-2 rounded border text-xs flex items-center gap-2 bg-[#FFF1D1] ${
                       node.is_threat
-                        ? 'bg-rose-950/40 border-rose-800 text-rose-300'
-                        : 'bg-slate-900 border-[#23324d] text-slate-200'
+                        ? 'border-2 border-[#DF301C] text-black'
+                        : 'border border-black text-black'
                     }`}
                   >
-                    <Laptop className="w-4 h-4 text-slate-400 shrink-0" />
+                    <Laptop className="w-3.5 h-3.5 text-black shrink-0" />
                     <div className="overflow-hidden">
-                      <div className="font-mono font-semibold truncate text-[11px]">{node.id}</div>
-                      <div className="text-[10px] text-slate-400 truncate">{node.label}</div>
+                      <div className="font-bold truncate text-[11px] text-black">{node.id}</div>
+                      <div className="text-[10px] text-black truncate font-normal">{node.label}</div>
                     </div>
                   </div>
                 ))
               ) : (
-                <div className="col-span-2 text-center py-4 text-xs text-slate-500">
+                <div className="col-span-2 text-center py-4 text-xs text-black font-normal">
                   No external destinations logged
                 </div>
               )}
