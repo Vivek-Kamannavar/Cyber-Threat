@@ -1,15 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { Network, Shield, Server, Laptop, AlertTriangle, ArrowRight, RefreshCw } from 'lucide-react';
+import { fetchTopology } from '../services/apiService';
 
 export default function NetworkTopologyGraph({ alerts }) {
   const [topology, setTopology] = useState({ nodes: [], edges: [], total_active_flows: 0 });
   const [isRefreshing, setIsRefreshing] = useState(false);
 
-  const fetchTopology = async () => {
+  const loadTopology = async () => {
     try {
-      const res = await fetch('http://127.0.0.1:8000/api/topology');
-      if (res.ok) {
-        const data = await res.json();
+      const data = await fetchTopology();
+      if (data) {
         setTopology(data);
       }
     } catch (e) {
@@ -18,14 +18,14 @@ export default function NetworkTopologyGraph({ alerts }) {
   };
 
   useEffect(() => {
-    fetchTopology();
-    const interval = setInterval(fetchTopology, 3000);
+    loadTopology();
+    const interval = setInterval(loadTopology, 3000);
     return () => clearInterval(interval);
   }, [alerts]);
 
   const handleManualRefresh = async () => {
     setIsRefreshing(true);
-    await fetchTopology();
+    await loadTopology();
     setTimeout(() => setIsRefreshing(false), 500);
   };
 

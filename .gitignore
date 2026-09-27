@@ -47,3 +47,10 @@ desktop.ini
 .pytest_cache/
 backend/data/*.db*
 backend/data/*.joblib
+
+# Large Media (>100MB exceeds GitHub push limit)
+refer/YouTube_video.mp4
+refer/scratch/
+
+# Firebase build cache
+.firebase/

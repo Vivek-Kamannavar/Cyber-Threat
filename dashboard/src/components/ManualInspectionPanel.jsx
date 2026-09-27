@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { inspectTarget } from '../services/apiService';
 import {
   Search,
   ShieldAlert,
@@ -105,32 +106,22 @@ export default function ManualInspectionPanel({ onInspectionComplete }) {
     setLoading(true);
 
     try {
-      const res = await fetch(`http://${window.location.hostname}:8000/api/inspect`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          ip_address: ipAddress.trim() || undefined,
-          website: website.trim() || undefined,
-          email: email.trim() || undefined,
-          phone_number: phoneNumber.trim() || undefined,
-          port: parseInt(port, 10) || 443,
-          protocol: protocol
-        })
+      const data = await inspectTarget({
+        ip_address: ipAddress.trim() || undefined,
+        website: website.trim() || undefined,
+        email: email.trim() || undefined,
+        phone_number: phoneNumber.trim() || undefined,
+        port: parseInt(port, 10) || 443,
+        protocol: protocol
       });
 
-      if (!res.ok) {
-        const errData = await res.json().catch(() => ({}));
-        throw new Error(errData.detail || 'Inspection failed');
-      }
-
-      const data = await res.json();
       setResult(data);
       if (onInspectionComplete && data.alerts && data.alerts.length > 0) {
         onInspectionComplete(data.alerts);
       }
     } catch (err) {
       console.error('Inspection error:', err);
-      setErrorMsg(err.message || 'Inspection failed. Please ensure the backend server is running.');
+      setErrorMsg(err.message || 'Inspection failed.');
     } finally {
       setLoading(false);
     }
@@ -439,25 +430,25 @@ export default function ManualInspectionPanel({ onInspectionComplete }) {
 
                 <div className="mt-3 p-3.5 rounded-xl bg-slate-900/90 border border-amber-500/40 shadow-md">
                   <div className="flex items-center gap-1.5 text-[11px] font-bold text-amber-300 uppercase tracking-wider mb-1">
-                    <span>💡 Reason Explained (Like Telling a Kid):</span>
+                    <span>💡 Reason Explained:</span>
                   </div>
                   <p className="text-sm sm:text-base text-white font-semibold leading-relaxed">
                     {(() => {
-                      const summary = result.verdict.kid_friendly_explanation || result.verdict.summary || '';
+                      const summary = result.verdict.summary || result.verdict.kid_friendly_explanation || '';
                       if (summary.includes('Shannon Entropy') || summary.includes('flow burst') || summary.includes('DDoS')) {
-                        return 'A huge crowd of robot computers is shouting at our server all at once so nobody else can get in — just like 100 people trying to push through a tiny classroom door at the exact same second!';
+                        return 'High-volume distributed traffic surge detected: incoming request volume is saturating network capacity, characteristic of a Volumetric DDoS attack.';
                       }
                       if (summary.includes('inter-arrival') || summary.includes('C2')) {
-                        return 'A secret bad program hiding inside is quietly whispering to a hacker\'s computer on a timer like a ticking clock, waiting for secret evil instructions.';
+                        return 'Periodic beaconing heartbeat detected: an internal host is repeatedly communicating with an external C2 server at synchronized intervals.';
                       }
                       if (summary.includes('JA3') || summary.includes('Malware')) {
-                        return 'A dangerous computer virus was caught trying to wear a fake disguise to sneak past the security guards.';
+                        return 'Malicious TLS fingerprint identified: the handshake parameters match known threat actor signatures (e.g., Cobalt Strike / Metasploit).';
                       }
                       if (summary.includes('fan-out') || summary.includes('Scanning')) {
-                        return 'A sneaky stranger is walking around trying to wiggle every single doorknob and window on our house to see if any door was left unlocked.';
+                        return 'Reconnaissance sweep detected: a single source address is systematically probing multiple target ports to identify open services.';
                       }
                       if (summary.includes('asymmetric') || summary.includes('Exfiltration')) {
-                        return 'Someone is sneaking out a giant backpack stuffed with private files and secret photos through the back door!';
+                        return 'Abnormal asymmetric data flow detected: extreme outbound data volume without reciprocal inbound traffic indicates data exfiltration.';
                       }
                       return summary;
                     })()}

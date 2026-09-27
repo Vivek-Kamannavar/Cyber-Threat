@@ -43,33 +43,33 @@ export default function ThreatDetailsModal({ alert, onClose }) {
         {/* Modal Content Scrollable Area */}
         <div className="p-6 overflow-y-auto space-y-5">
 
-          {/* Kid-Friendly Simple Explanation Callout */}
+          {/* Plain English Incident Summary Callout */}
           <div className="bg-gradient-to-r from-amber-950/50 to-orange-950/40 border border-amber-500/50 p-4 rounded-xl shadow-md">
             <div className="flex items-center gap-2 text-amber-300 font-bold text-xs uppercase tracking-wider mb-1.5">
-              <span>💡 Simple Explanation (Like Telling a Small Kid):</span>
+              <span>💡 Incident Summary:</span>
             </div>
             <p className="text-white text-sm font-semibold leading-relaxed">
               {(() => {
                 const raw = ev.reason || '';
                 if (raw.includes('Shannon Entropy') || raw.includes('flow burst') || alert.threat_class?.includes('DDoS')) {
-                  return 'A huge crowd of robot computers is shouting at our server all at once so nobody else can get in — just like 100 people trying to push through a tiny classroom door at the exact same second!';
+                  return 'A high-volume distributed request surge is overwhelming the network link, collapsing source IP entropy and saturating bandwidth.';
                 }
                 if (raw.includes('inter-arrival') || alert.threat_class?.includes('C2')) {
-                  return 'A secret bad program hiding inside is quietly whispering to a hacker\'s computer on a timer like a ticking clock, waiting for secret evil instructions.';
+                  return 'Low inter-arrival time variance observed. An internal endpoint is executing regular periodic beaconing to an external Command & Control server.';
                 }
                 if (raw.includes('Entropy') || raw.includes('n-gram') || alert.threat_class?.includes('DGA')) {
-                  return 'The computer is asking for weird scrambled secret-code website names (like \'x9z8q7w6\'), which hackers use to sneak stolen secrets out without anyone noticing.';
+                  return 'High Shannon entropy or rare n-gram frequencies detected in DNS queries, characteristic of algorithmic domain generation or DNS tunneling.';
                 }
                 if (raw.includes('JA3') || alert.threat_class?.includes('Malware')) {
-                  return 'A dangerous computer virus was caught trying to wear a fake disguise to sneak past the security guards.';
+                  return 'TLS cryptographic client parameters match known malicious JA3/JA4 fingerprints associated with malware and offensive security frameworks.';
                 }
-                if (raw.includes('fan-out') || alert.threat_class?.includes('Scanning')) {
-                  return 'A sneaky stranger is walking around trying to wiggle every single doorknob and window on our house to see if any door was left unlocked.';
+                if (raw.includes('fan-out') || alert.threat_class?.includes('Scanning') || alert.threat_class?.includes('Scan')) {
+                  return 'Systematic multi-port or multi-host connection sweep detected, indicating active network reconnaissance and vulnerability scanning.';
                 }
                 if (raw.includes('asymmetric') || alert.threat_class?.includes('Exfiltration')) {
-                  return 'Someone is sneaking out a giant backpack stuffed with private files and secret photos through the back door!';
+                  return 'Significant outbound data transfer asymmetry detected across the diode interface, indicating potential unauthorized data exfiltration.';
                 }
-                return raw || 'A strange computer activity was spotted!';
+                return raw || 'Anomalous traffic pattern detected across the unidirectional interface.';
               })()}
             </p>
           </div>

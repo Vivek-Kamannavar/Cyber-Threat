@@ -3,6 +3,7 @@ import {
   Bot, X, ShieldAlert, CheckCircle, Copy, Check, Send, 
   Terminal, AlertTriangle, Sparkles, Loader2 
 } from 'lucide-react';
+import { analyzeAlertWithAi, chatWithAi } from '../services/apiService';
 
 export default function AiCopilotDrawer({ isOpen, onClose, alert }) {
   const [analysis, setAnalysis] = useState(null);
@@ -32,12 +33,9 @@ export default function AiCopilotDrawer({ isOpen, onClose, alert }) {
   const fetchAnalysis = async (alertId) => {
     setLoading(true);
     try {
-      const res = await fetch(`http://127.0.0.1:8000/api/ai/analyze-alert/${alertId}`, {
-        method: 'POST'
-      });
-      if (res.ok) {
-        const data = await res.json();
-        setAnalysis(data.analysis);
+      const data = await analyzeAlertWithAi(alertId, alert);
+      if (data) {
+        setAnalysis(data);
       }
     } catch (e) {
       console.error("Failed to fetch AI analysis:", e);
@@ -62,25 +60,10 @@ export default function AiCopilotDrawer({ isOpen, onClose, alert }) {
     setChatLoading(true);
 
     try {
-      const res = await fetch('http://127.0.0.1:8000/api/ai/chat', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          message: userText,
-          alert_id: alert?.alert_id,
-          alert_context: alert,
-          history: chatMessages.slice(-4)
-        })
-      });
-
-      if (res.ok) {
-        const data = await res.json();
-        setChatMessages(prev => [...prev, { role: 'assistant', content: data.reply }]);
-      } else {
-        setChatMessages(prev => [...prev, { role: 'assistant', content: "Offline assistant: Request timed out. Please verify network connectivity." }]);
-      }
+      const reply = await chatWithAi(userText, alert, chatMessages);
+      setChatMessages(prev => [...prev, { role: 'assistant', content: reply }]);
     } catch (err) {
-      setChatMessages(prev => [...prev, { role: 'assistant', content: "Offline assistant: Unable to contact backend AI service." }]);
+      setChatMessages(prev => [...prev, { role: 'assistant', content: "Offline assistant: Unable to contact AI service." }]);
     } finally {
       setChatLoading(false);
     }

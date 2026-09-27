@@ -1,11 +1,13 @@
 import React from 'react';
 import { 
-  ShieldAlert, Radio, Lock, HelpCircle, Power, Trash2, 
-  UploadCloud, Eye, Sliders, ShieldCheck, AlertTriangle 
+  ShieldAlert, Radio, HelpCircle, Power, Trash2, 
+  UploadCloud, Eye, Sliders, Activity, Network, Search, Settings
 } from 'lucide-react';
 
 export default function Header({
   isConnected,
+  connectionMode = 'LIVE_BACKEND',
+  onOpenBackendSettings,
   totalAlerts,
   hasCriticalThreat,
   autoDetectionEnabled,
@@ -14,11 +16,37 @@ export default function Header({
   onToggleGuide,
   onOpenUpload,
   isExecutiveView,
-  onToggleViewMode
+  onToggleViewMode,
+  currentTab,
+  onSelectTab
 }) {
+  const tabs = [
+    {
+      id: 'monitor',
+      name: 'Live Threat Monitor',
+      icon: Activity,
+      badge: totalAlerts > 0 ? totalAlerts : null,
+      description: 'Real-time Telemetry & SOC Triage'
+    },
+    {
+      id: 'topology',
+      name: 'Topology & Attack Lab',
+      icon: Network,
+      badge: null,
+      description: 'Network Graph & Threat Simulations'
+    },
+    {
+      id: 'forensics',
+      name: 'Forensic & Target Scanner',
+      icon: Search,
+      badge: null,
+      description: 'Target Probing & PCAP Ingestion'
+    }
+  ];
+
   return (
-    <header className="bg-[#151f32] border-b border-[#23324d] px-6 py-4 flex flex-col gap-4">
-      {/* Top Bar */}
+    <header className="bg-[#151f32] border-b border-[#23324d] px-4 md:px-6 py-4 flex flex-col gap-4">
+      {/* Top Bar: Title & Global Actions */}
       <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4">
         <div className="flex items-center gap-3">
           <div className="p-2.5 bg-sky-950/60 border border-sky-500/40 rounded-xl text-sky-400">
@@ -39,8 +67,8 @@ export default function Header({
           </div>
         </div>
 
-        {/* Action Controls */}
-        <div className="flex flex-wrap items-center gap-2.5">
+        {/* Global Utility Controls */}
+        <div className="flex flex-wrap items-center gap-2">
           {/* Executive / Forensic Mode Toggle */}
           <button
             onClick={onToggleViewMode}
@@ -84,15 +112,77 @@ export default function Header({
             </button>
           )}
 
-          {/* WebSocket Status */}
-          <div className="flex items-center gap-2 px-3 py-1.5 bg-[#0b1120] border border-[#23324d] rounded-lg">
-            <Radio className={`w-3.5 h-3.5 ${isConnected ? 'text-emerald-400' : 'text-rose-400'}`} />
-            <span className={`text-xs font-mono font-medium ${isConnected ? 'text-emerald-400' : 'text-rose-400'}`}>
-              {isConnected ? 'LIVE FEED' : 'OFFLINE'}
-            </span>
+          {/* How It Works Guide */}
+          <button
+            onClick={onToggleGuide}
+            className="p-1.5 bg-[#0b1120] hover:bg-slate-800 border border-[#23324d] rounded-lg text-slate-400 hover:text-slate-200 transition-colors"
+            title="System Architecture & Guide"
+          >
+            <HelpCircle className="w-4 h-4" />
+          </button>
+
+          {/* Connection Status & Settings */}
+          <div className="flex items-center gap-1.5 bg-[#0b1120] border border-[#23324d] rounded-lg p-1">
+            <div className="flex items-center gap-2 px-2.5 py-1">
+              <span className="relative flex h-2.5 w-2.5">
+                <span className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${
+                  isConnected ? (connectionMode === 'LIVE_BACKEND' ? 'bg-emerald-400' : 'bg-sky-400') : 'bg-rose-400'
+                }`} />
+                <span className={`relative inline-flex rounded-full h-2.5 w-2.5 ${
+                  isConnected ? (connectionMode === 'LIVE_BACKEND' ? 'bg-emerald-500' : 'bg-sky-500') : 'bg-rose-500'
+                }`} />
+              </span>
+              <span className={`text-xs font-mono font-medium ${
+                isConnected ? (connectionMode === 'LIVE_BACKEND' ? 'text-emerald-400' : 'text-sky-300') : 'text-rose-400'
+              }`}>
+                {isConnected ? (connectionMode === 'LIVE_BACKEND' ? 'LIVE BACKEND' : 'CLOUD SIMULATOR') : 'DISCONNECTED'}
+              </span>
+            </div>
+            {onOpenBackendSettings && (
+              <button
+                onClick={onOpenBackendSettings}
+                className="p-1 rounded text-slate-400 hover:text-slate-200 hover:bg-slate-800 transition-colors"
+                title="Configure Backend API Gateway"
+              >
+                <Settings className="w-3.5 h-3.5" />
+              </button>
+            )}
           </div>
         </div>
       </div>
+
+      {/* 3 Dedicated Webpage Navigation Tabs */}
+      <nav className="flex items-center gap-2 border-t border-[#23324d]/80 pt-3 overflow-x-auto">
+        {tabs.map((tab) => {
+          const Icon = tab.icon;
+          const isActive = currentTab === tab.id;
+          return (
+            <button
+              key={tab.id}
+              onClick={() => onSelectTab(tab.id)}
+              className={`flex items-center gap-2.5 px-4 py-2 rounded-xl text-xs font-medium transition-all duration-200 whitespace-nowrap relative ${
+                isActive
+                  ? 'bg-sky-500/15 text-sky-300 border border-sky-500/40 shadow-sm shadow-sky-950'
+                  : 'bg-[#0b1120] text-slate-400 hover:text-slate-200 border border-[#23324d] hover:border-slate-700'
+              }`}
+            >
+              <Icon className={`w-4 h-4 ${isActive ? 'text-sky-400' : 'text-slate-400'}`} />
+              <div className="text-left">
+                <span className={`font-semibold ${isActive ? 'text-white' : ''}`}>
+                  {tab.name}
+                </span>
+              </div>
+              {tab.badge !== null && (
+                <span className={`px-1.5 py-0.5 text-[10px] font-mono rounded-full font-bold ml-1 ${
+                  isActive ? 'bg-sky-500 text-slate-950' : 'bg-rose-950 text-rose-300 border border-rose-800'
+                }`}>
+                  {tab.badge}
+                </span>
+              )}
+            </button>
+          );
+        })}
+      </nav>
 
       {/* Traffic Light Facility Status Banner */}
       <div className={`px-4 py-2.5 rounded-xl border text-xs font-medium flex items-center justify-between transition-colors shadow-sm ${
@@ -117,7 +207,7 @@ export default function Header({
           <span className="font-bold tracking-wide uppercase text-[11px]">
             {hasCriticalThreat ? 'CRITICAL INCIDENT DETECTED:' : totalAlerts > 0 ? 'ELEVATED SECURITY ADVISORY:' : 'FACILITY STATUS: NORMAL'}
           </span>
-          <span className="text-slate-300">
+          <span className="text-slate-300 hidden md:inline">
             {hasCriticalThreat
               ? 'Active high-confidence threat in progress across the unidirectional optical datalink. Immediate analyst review required.'
               : totalAlerts > 0
@@ -126,7 +216,7 @@ export default function Header({
           </span>
         </div>
 
-        <span className="text-[11px] font-mono text-slate-400 hidden sm:inline">
+        <span className="text-[11px] font-mono text-slate-400 shrink-0">
           {totalAlerts} Total Alerts Logged
         </span>
       </div>

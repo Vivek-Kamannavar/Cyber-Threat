@@ -1,0 +1,10 @@
+{
+  "name": "cyber-threat-detection",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "npm --prefix dashboard run dev",
+    "dashboard": "npm --prefix dashboard run dev",
+    "backend": "powershell -Command \".\\venv\\Scripts\\python.exe -m uvicorn backend.main:app --host 127.0.0.1 --port 8000 --reload\""
+  }
+}

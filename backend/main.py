@@ -1012,36 +1012,36 @@ async def inspect_target(req: ManualInspectionRequest):
 
     KID_FRIENDLY_MAP = {
         "Volumetric / Protocol DDoS": {
-            "title": "Traffic Flood Attack",
-            "simple": "A huge crowd of robot computers is shouting at our server all at once so nobody else can get in — just like 100 people trying to push through a tiny classroom door at the exact same second!"
+            "title": "Volumetric Denial of Service (DDoS)",
+            "simple": "A high-volume distributed traffic flood is attempting to exhaust network bandwidth and system resources to disrupt services."
         },
         "Botnet C2 Beaconing": {
-            "title": "Secret Spy Clock",
-            "simple": "A secret bad program hiding inside is quietly whispering to a hacker's computer on a timer like a ticking clock, waiting for secret evil instructions."
+            "title": "Command & Control (C2) Beaconing",
+            "simple": "An internal host is periodically transmitting synchronized heartbeat signals to an external command-and-control server."
         },
         "DGA Domains & DNS Tunnelling": {
-            "title": "Scrambled Secret-Code Website",
-            "simple": "The computer is asking for weird scrambled secret-code website names (like 'x9z8q7w6'), which hackers use to sneak stolen secrets out without anyone noticing."
+            "title": "DGA Domains & DNS Tunnelling",
+            "simple": "High-entropy pseudo-random domains and non-standard DNS records detected, indicating automated C2 rendezvous or covert data exfiltration."
         },
         "Encrypted Malware (TLS/QUIC)": {
-            "title": "Disguised Computer Virus",
-            "simple": "A dangerous computer virus was caught trying to wear a fake disguise to sneak past the security guards."
+            "title": "Encrypted Malware Signatures",
+            "simple": "TLS cryptographic handshake fingerprints (JA3/JA4) match known malicious tooling and evasion techniques."
         },
         "Reconnaissance & Port Scanning": {
-            "title": "Sneaky Prowler",
-            "simple": "A sneaky stranger is walking around trying to wiggle every single doorknob and window on our house to see if any door was accidentally left unlocked."
+            "title": "Port & Network Reconnaissance",
+            "simple": "A single address is systematically scanning multiple destination ports and hosts to identify exposed or vulnerable listening services."
         },
         "Data Exfiltration": {
-            "title": "Secret Backpack Theft",
-            "simple": "Someone is sneaking out a giant backpack stuffed with private files and secret photos through the back door!"
+            "title": "Unauthorized Data Exfiltration",
+            "simple": "Extreme outbound data transfer asymmetry detected, indicating unauthorized transmission of internal files or telemetry."
         },
         "Brand Spoofing & Phishing Attack": {
-            "title": "Fake Copycat Imposter",
-            "simple": "A copycat fake website is pretending to be a real company (like Microsoft or Apple) to trick you into typing your secret password!"
+            "title": "Brand Impersonation & Phishing",
+            "simple": "A deceptive domain is mimicking legitimate enterprise services to harvest credentials or deliver malicious payloads."
         },
         "Isolation Forest Statistical Anomaly": {
-            "title": "Weird Unseen Behavior",
-            "simple": "This computer suddenly started acting very strangely and doing things it has never done before!"
+            "title": "Unsupervised Behavioral Anomaly",
+            "simple": "Statistical flow features deviate significantly from historical baseline parameters across the diode interface."
         }
     }
 
@@ -1049,31 +1049,31 @@ async def inspect_target(req: ManualInspectionRequest):
         t_class = raised_alerts[0].get("threat_class", "Threat")
         mapping = KID_FRIENDLY_MAP.get(t_class, {})
         kid_friendly_title = mapping.get("title", t_class)
-        kid_friendly_explanation = mapping.get("simple", raised_alerts[0].get("supporting_evidence_feature", {}).get("reason", "A suspicious pattern was spotted!"))
+        kid_friendly_explanation = mapping.get("simple", raised_alerts[0].get("supporting_evidence_feature", {}).get("reason", "Anomalous pattern detected."))
         summary_msg = f"{kid_friendly_title}: {kid_friendly_explanation}"
     elif is_phishing_url:
-        kid_friendly_title = "Fake Copycat Imposter"
-        kid_friendly_explanation = "A copycat fake website is pretending to be a real company (like Microsoft or Apple) to trick you into typing your secret password!"
+        kid_friendly_title = "Brand Impersonation & Phishing"
+        kid_friendly_explanation = "A deceptive domain is impersonating legitimate services to capture credentials or deploy unauthorized software."
         summary_msg = f"{kid_friendly_title}: {kid_friendly_explanation}"
     elif is_known_bad_ip:
-        kid_friendly_title = "Naughty Hacker Address"
-        kid_friendly_explanation = "This internet address is on the global naughty list because it was caught attacking other computers before."
+        kid_friendly_title = "Blacklisted Malicious IP"
+        kid_friendly_explanation = "This IP address is listed on threat intelligence feeds for prior involvement in cyberattacks or botnet campaigns."
         summary_msg = f"{kid_friendly_title}: {kid_friendly_explanation}"
     elif email_report and email_report["is_suspicious"]:
-        kid_friendly_title = "Trick Email Sender"
-        kid_friendly_explanation = f"A stranger is using a fake email identity ({email_report['detected_reasons'][0]}), trying to trick you into clicking a dangerous trap."
+        kid_friendly_title = "Suspicious Email Identity"
+        kid_friendly_explanation = f"Sender identity irregularity detected ({email_report['detected_reasons'][0]}), indicating spoofing or phishing attempts."
         summary_msg = f"{kid_friendly_title}: {kid_friendly_explanation}"
     elif phone_report and phone_report["is_suspicious"]:
-        kid_friendly_title = "Scammer Phone Number"
-        kid_friendly_explanation = f"This phone number belongs to a telephone scammer ({phone_report['detected_reasons'][0]}) who calls to scare people or steal private codes."
+        kid_friendly_title = "Flagged Telephony Origin"
+        kid_friendly_explanation = f"Originating number flagged ({phone_report['detected_reasons'][0]}) in telemetry databases for social engineering."
         summary_msg = f"{kid_friendly_title}: {kid_friendly_explanation}"
     elif len(matched_attacks) > 0:
-        kid_friendly_title = "Repeat Bad Guy"
-        kid_friendly_explanation = f"This address was caught doing {len(matched_attacks)} bad things in the past!"
+        kid_friendly_title = "Repeat Threat Vector"
+        kid_friendly_explanation = f"This entity matches {len(matched_attacks)} known historical attack patterns in the threat database."
         summary_msg = f"{kid_friendly_title}: {kid_friendly_explanation}"
     else:
-        kid_friendly_title = "Safe & Friendly"
-        kid_friendly_explanation = "All clear! Everything looks completely normal, friendly, and safe — no sneaky tricks found!"
+        kid_friendly_title = "Normal & Verified"
+        kid_friendly_explanation = "Inspection complete. Telemetry exhibits expected operational parameters with zero anomalous signatures."
         summary_msg = f"{kid_friendly_title}: {kid_friendly_explanation}"
 
     # Advisory explaining why some threats may initially look safe on basic firewalls

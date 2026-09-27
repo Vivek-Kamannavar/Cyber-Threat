@@ -1,18 +1,25 @@
 import React, { useState, useEffect, useRef } from 'react';
 import Header from './components/Header';
-import SummaryCards from './components/SummaryCards';
-import ManualInspectionPanel from './components/ManualInspectionPanel';
-import ThroughputChart from './components/ThroughputChart';
-import SimulationControl from './components/SimulationControl';
-import AlertFeed from './components/AlertFeed';
 import ThreatDetailsModal from './components/ThreatDetailsModal';
-import NetworkTopologyGraph from './components/NetworkTopologyGraph';
 import FileUploadModal from './components/FileUploadModal';
 import AiCopilotDrawer from './components/AiCopilotDrawer';
-import { HelpCircle, X, ShieldCheck, ArrowRight, Activity, Bell } from 'lucide-react';
+import BackendSettingsModal from './components/BackendSettingsModal';
+import LiveMonitorPage from './pages/LiveMonitorPage';
+import TopologyLabPage from './pages/TopologyLabPage';
+import ForensicScannerPage from './pages/ForensicScannerPage';
+import { 
+  initializeSocketStream, 
+  simulateThreat, 
+  toggleAutoDetection, 
+  clearAlerts, 
+  eventBus 
+} from './services/apiService';
+import { HelpCircle, X } from 'lucide-react';
 
 export default function App() {
   const [isConnected, setIsConnected] = useState(false);
+  const [connectionMode, setConnectionMode] = useState('LIVE_BACKEND'); // 'LIVE_BACKEND' | 'CLOUD_SIMULATION'
+  const [isBackendSettingsOpen, setIsBackendSettingsOpen] = useState(false);
   const [telemetry, setTelemetry] = useState({ pps: 0, bps: 0 });
   const [historyData, setHistoryData] = useState([]);
   const [alerts, setAlerts] = useState([]);
@@ -23,27 +30,50 @@ export default function App() {
   const [isExecutiveView, setIsExecutiveView] = useState(false);
   const [autoDetectionEnabled, setAutoDetectionEnabled] = useState(true);
   const [showGuideModal, setShowGuideModal] = useState(false);
-  const [showBanner, setShowBanner] = useState(true);
-  const wsRef = useRef(null);
+
+  // Hash-based routing for 3 distinct pages
+  const getInitialTab = () => {
+    const hash = window.location.hash.replace('#', '').toLowerCase();
+    if (['monitor', 'topology', 'forensics'].includes(hash)) {
+      return hash;
+    }
+    return 'monitor';
+  };
+
+  const [activeTab, setActiveTab] = useState(getInitialTab);
+
+  // Sync hash changes with browser navigation
+  useEffect(() => {
+    const handleHashChange = () => {
+      const hash = window.location.hash.replace('#', '').toLowerCase();
+      if (['monitor', 'topology', 'forensics'].includes(hash)) {
+        setActiveTab(hash);
+      }
+    };
+    window.addEventListener('hashchange', handleHashChange);
+    return () => window.removeEventListener('hashchange', handleHashChange);
+  }, []);
+
+  const handleSelectTab = (tabId) => {
+    setActiveTab(tabId);
+    window.location.hash = tabId;
+  };
+
   const prevAlertsRef = useRef(0);
 
   useEffect(() => {
-    let ws = null;
-    let reconnectTimeout = null;
+    // Listen for global alert events (from file upload / simulation / scanner)
+    const unsubAlert = eventBus.on('alert', (newAlert) => {
+      setAlerts((prev) => [newAlert, ...prev]);
+    });
 
-    const connectWebSocket = () => {
-      const wsUrl = `ws://${window.location.hostname}:8000/ws/alerts`;
-      ws = new WebSocket(wsUrl);
-      wsRef.current = ws;
-
-      ws.onopen = () => {
-        setIsConnected(true);
-      };
-
-      ws.onmessage = (event) => {
+    const cleanup = initializeSocketStream({
+      onStatusChange: (connected, mode) => {
+        setIsConnected(connected);
+        if (mode) setConnectionMode(mode);
+      },
+      onMessage: (msg) => {
         try {
-          const msg = JSON.parse(event.data);
-          
           if (msg.type === 'snapshot') {
             if (msg.recent_alerts) {
               setAlerts(msg.recent_alerts);
@@ -92,40 +122,25 @@ export default function App() {
             });
 
           } else if (msg.type === 'alert') {
-            setAlerts((prev) => [...prev, msg.data]);
+            setAlerts((prev) => [msg.data, ...prev]);
           }
         } catch (e) {
-          console.error("Error parsing WebSocket message:", e);
+          console.error("Error handling stream message:", e);
         }
-      };
-
-      ws.onclose = () => {
-        setIsConnected(false);
-        reconnectTimeout = setTimeout(connectWebSocket, 3000);
-      };
-
-      ws.onerror = (err) => {
-        console.error("WebSocket error:", err);
-        ws.close();
-      };
-    };
-
-    connectWebSocket();
+      }
+    });
 
     return () => {
-      if (ws) ws.close();
-      if (reconnectTimeout) clearTimeout(reconnectTimeout);
+      cleanup();
+      unsubAlert();
     };
   }, []);
 
   const handleSimulate = async (threatType) => {
     try {
-      const res = await fetch(`http://127.0.0.1:8000/api/simulate/${threatType}`, {
-        method: 'POST'
+      await simulateThreat(threatType, (newAlert) => {
+        setAlerts((prev) => [newAlert, ...prev]);
       });
-      if (!res.ok) {
-        console.error(`Simulation failed for ${threatType}`);
-      }
     } catch (e) {
       console.error("Failed to run simulation:", e);
     }
@@ -133,13 +148,8 @@ export default function App() {
 
   const handleToggleAutoDetection = async () => {
     try {
-      const res = await fetch(`http://127.0.0.1:8000/api/detection/toggle`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ enabled: !autoDetectionEnabled })
-      });
-      if (res.ok) {
-        const data = await res.json();
+      const data = await toggleAutoDetection();
+      if (data && data.auto_detection_enabled !== undefined) {
         setAutoDetectionEnabled(data.auto_detection_enabled);
       }
     } catch (e) {
@@ -149,14 +159,10 @@ export default function App() {
 
   const handleClearAlerts = async () => {
     try {
-      const res = await fetch(`http://127.0.0.1:8000/api/alerts/clear`, {
-        method: 'POST'
-      });
-      if (res.ok) {
-        setAlerts([]);
-        prevAlertsRef.current = 0;
-        setHistoryData((prev) => prev.map(item => ({ ...item, threatSpike: 0, alerts: 0 })));
-      }
+      await clearAlerts();
+      setAlerts([]);
+      prevAlertsRef.current = 0;
+      setHistoryData((prev) => prev.map(item => ({ ...item, threatSpike: 0, alerts: 0 })));
     } catch (e) {
       console.error("Failed to clear alerts:", e);
     }
@@ -177,6 +183,8 @@ export default function App() {
     <div className="min-h-screen flex flex-col bg-[#0b1120] text-slate-100">
       <Header
         isConnected={isConnected}
+        connectionMode={connectionMode}
+        onOpenBackendSettings={() => setIsBackendSettingsOpen(true)}
         totalAlerts={alerts.length}
         hasCriticalThreat={hasCriticalThreat}
         autoDetectionEnabled={autoDetectionEnabled}
@@ -186,38 +194,45 @@ export default function App() {
         onOpenUpload={() => setIsUploadModalOpen(true)}
         isExecutiveView={isExecutiveView}
         onToggleViewMode={() => setIsExecutiveView(!isExecutiveView)}
+        currentTab={activeTab}
+        onSelectTab={handleSelectTab}
       />
 
-      <main className="flex-1 max-w-7xl w-full mx-auto p-4 md:p-6 space-y-6">
-        <SummaryCards
-          telemetry={telemetry}
-          totalAlerts={alerts.length}
-          highestConfidence={highestConfidence}
-          autoDetectionEnabled={autoDetectionEnabled}
-        />
-
-        {/* Manual Target IP & Website Threat Scanner (hidden in executive view) */}
-        {!isExecutiveView && (
-          <ManualInspectionPanel
-            onInspectionComplete={(newAlerts) => {
-              setAlerts((prev) => [...prev, ...newAlerts]);
-            }}
+      <main className="flex-1 max-w-7xl w-full mx-auto p-4 md:p-6">
+        {/* Page 1: Live Threat Monitor & Telemetry */}
+        {activeTab === 'monitor' && (
+          <LiveMonitorPage
+            telemetry={telemetry}
+            alerts={alerts}
+            historyData={historyData}
+            highestConfidence={highestConfidence}
+            autoDetectionEnabled={autoDetectionEnabled}
+            isExecutiveView={isExecutiveView}
+            onSelectAlert={(alert) => setSelectedAlert(alert)}
+            onOpenAiCopilot={handleOpenCopilot}
+            onNavigateToTab={handleSelectTab}
           />
         )}
 
-        <SimulationControl onSimulate={handleSimulate} />
-
-        {!isExecutiveView && (
-          <ThroughputChart historyData={historyData} />
+        {/* Page 2: Network Topology & Simulation Lab */}
+        {activeTab === 'topology' && (
+          <TopologyLabPage
+            alerts={alerts}
+            onSimulate={handleSimulate}
+            onNavigateToTab={handleSelectTab}
+          />
         )}
 
-        <NetworkTopologyGraph alerts={alerts} />
-
-        <AlertFeed
-          alerts={alerts}
-          onSelectAlert={(alert) => setSelectedAlert(alert)}
-          onOpenAiCopilot={handleOpenCopilot}
-        />
+        {/* Page 3: Deep Forensic Scanner & PCAP Ingestion */}
+        {activeTab === 'forensics' && (
+          <ForensicScannerPage
+            onInspectionComplete={(newAlerts) => {
+              setAlerts((prev) => [...prev, ...newAlerts]);
+            }}
+            onOpenUpload={() => setIsUploadModalOpen(true)}
+            onNavigateToTab={handleSelectTab}
+          />
+        )}
       </main>
 
       {/* Threat Evidence Deep Dive Modal */}
@@ -237,6 +252,13 @@ export default function App() {
         isOpen={isAiDrawerOpen}
         onClose={() => setIsAiDrawerOpen(false)}
         alert={activeCopilotAlert}
+      />
+
+      {/* Backend Settings Gateway Modal */}
+      <BackendSettingsModal
+        isOpen={isBackendSettingsOpen}
+        onClose={() => setIsBackendSettingsOpen(false)}
+        connectionMode={connectionMode}
       />
 
       {/* How It Works Guide Modal */}
