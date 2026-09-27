@@ -38,6 +38,28 @@ def get_ip_identity_label(ip: str) -> str:
     return f"External Host ({ip})"
 
 
+def _safe_float(value: Any, default: float = 0.0) -> float:
+    """Coerces a captured field to float without raising on malformed captures (RULE 3.4)."""
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return default
+
+
+def _safe_int(value: Any, default: int = 0) -> int:
+    """Coerces a captured field to int without raising on malformed captures (RULE 3.4)."""
+    if isinstance(value, bool):
+        return default
+    if isinstance(value, (int, float)):
+        return int(value)
+    if isinstance(value, str):
+        try:
+            return int(float(value.strip()))
+        except (TypeError, ValueError):
+            return default
+    return default
+
+
 class ZeekLogParser:
     """Parses Zeek TSV and JSON log formats (conn.log, dns.log, ssl.log) in read-only mode."""
 
@@ -56,7 +78,7 @@ class ZeekLogParser:
         parts = line.split('\t')
         if len(parts) >= 10:
             return {
-                "ts": float(parts[0]) if parts[0] != '-' else time.time(),
+                "ts": _safe_float(parts[0], time.time()),
                 "uid": parts[1],
                 "id.orig_h": parts[2],
                 "id.orig_p": int(parts[3]) if parts[3].isdigit() else 0,
@@ -158,13 +180,13 @@ class FlowNormalizer:
         timestamp = raw_record.get('ts') or raw_record.get('timestamp') or time.time()
         
         src_ip = raw_record.get('id.orig_h') or raw_record.get('src_ip') or '0.0.0.0'
-        src_port = int(raw_record.get('id.orig_p') or raw_record.get('src_port') or 0)
+        src_port = _safe_int(raw_record.get('id.orig_p') or raw_record.get('src_port') or 0)
         dst_ip = raw_record.get('id.resp_h') or raw_record.get('dst_ip') or '0.0.0.0'
-        dst_port = int(raw_record.get('id.resp_p') or raw_record.get('dst_port') or 0)
+        dst_port = _safe_int(raw_record.get('id.resp_p') or raw_record.get('dst_port') or 0)
         protocol = (raw_record.get('proto') or raw_record.get('protocol') or 'TCP').upper()
 
-        orig_bytes = int(raw_record.get('orig_bytes') or raw_record.get('bytes_sent') or raw_record.get('orig_ip_bytes') or 0)
-        resp_bytes = int(raw_record.get('resp_bytes') or raw_record.get('bytes_received') or raw_record.get('resp_ip_bytes') or 0)
+        orig_bytes = _safe_int(raw_record.get('orig_bytes') or raw_record.get('bytes_sent') or raw_record.get('orig_ip_bytes') or 0)
+        resp_bytes = _safe_int(raw_record.get('resp_bytes') or raw_record.get('bytes_received') or raw_record.get('resp_ip_bytes') or 0)
 
         dns_query = raw_record.get('query') or raw_record.get('dns_query')
         qtype_name = raw_record.get('qtype_name') or raw_record.get('dns_qtype') or raw_record.get('qtype')
@@ -175,7 +197,7 @@ class FlowNormalizer:
         cipher = raw_record.get('cipher')
 
         tcp_flags = raw_record.get('conn_state') or raw_record.get('tcp_flags') or ''
-        packet_count = int(raw_record.get('orig_pkts', 0)) + int(raw_record.get('resp_pkts', 0)) or raw_record.get('packet_count', 1)
+        packet_count = _safe_int(raw_record.get('orig_pkts')) + _safe_int(raw_record.get('resp_pkts')) or _safe_int(raw_record.get('packet_count'), 1)
 
         src_label = get_ip_identity_label(src_ip)
         dst_label = get_ip_identity_label(dst_ip)

@@ -157,11 +157,11 @@ export default function FileUploadModal({ isOpen, onClose, onUploadComplete }) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
-      <div className="bg-[#151f32] border border-[#23324d] rounded-xl w-full max-w-lg shadow-2xl overflow-hidden flex flex-col">
+      <div className="bg-[#0f172a] border border-[#1e293b] rounded-xl w-full max-w-lg shadow-2xl overflow-hidden flex flex-col">
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-[#23324d]">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-[#1e293b]">
           <div className="flex items-center gap-2">
-            <UploadCloud className="w-5 h-5 text-sky-400" />
+            <UploadCloud className="w-5 h-5 text-blue-400" />
             <h2 className="text-base font-semibold text-slate-100">Live Traffic Ingestion (PCAP / Zeek)</h2>
           </div>
           <button onClick={onClose} className="p-1 rounded-lg hover:bg-slate-800 text-slate-400 hover:text-slate-200">
@@ -176,7 +176,7 @@ export default function FileUploadModal({ isOpen, onClose, onUploadComplete }) {
             onDrop={handleDrop}
             onClick={() => fileInputRef.current?.click()}
             className={`border-2 border-dashed rounded-lg p-6 flex flex-col items-center justify-center cursor-pointer transition-colors ${
-              file ? 'border-sky-500/50 bg-sky-950/20' : 'border-[#23324d] hover:border-slate-600 bg-slate-900/40'
+              file ? 'border-blue-500/50 bg-blue-950/20' : 'border-[#1e293b] hover:border-slate-600 bg-slate-900/40'
             }`}
           >
             <input
@@ -186,7 +186,7 @@ export default function FileUploadModal({ isOpen, onClose, onUploadComplete }) {
               onChange={handleFileChange}
               className="hidden"
             />
-            <FileText className={`w-10 h-10 mb-2 ${file ? 'text-sky-400' : 'text-slate-500'}`} />
+            <FileText className={`w-10 h-10 mb-2 ${file ? 'text-blue-400' : 'text-slate-500'}`} />
             {file ? (
               <div className="text-center">
                 <span className="text-sm font-medium text-slate-200">{file.name}</span>
@@ -210,7 +210,7 @@ export default function FileUploadModal({ isOpen, onClose, onUploadComplete }) {
           {/* Replay Speed */}
           <div className="flex items-center justify-between pt-2">
             <label className="text-xs font-medium text-slate-300">Replay Playback Rate:</label>
-            <div className="flex gap-1 bg-slate-900 p-1 rounded-lg border border-[#23324d]">
+            <div className="flex gap-1 bg-slate-900 p-1 rounded-lg border border-[#1e293b]">
               {['1x', '5x', '10x', 'instant'].map(speed => (
                 <button
                   key={speed}
@@ -218,7 +218,7 @@ export default function FileUploadModal({ isOpen, onClose, onUploadComplete }) {
                   onClick={() => setPlaybackSpeed(speed)}
                   className={`px-2.5 py-1 text-xs font-semibold rounded ${
                     playbackSpeed === speed
-                      ? 'bg-sky-500 text-slate-900 shadow-sm'
+                      ? 'bg-blue-500 text-slate-900 shadow-sm'
                       : 'text-slate-400 hover:text-slate-200'
                   }`}
                 >
@@ -230,11 +230,11 @@ export default function FileUploadModal({ isOpen, onClose, onUploadComplete }) {
 
           {/* Status Feedback */}
           {uploadStatus && (
-            <div className="bg-slate-900/70 border border-[#23324d] rounded-lg p-3 text-xs space-y-1">
+            <div className="bg-slate-900/70 border border-[#1e293b] rounded-lg p-3 text-xs space-y-1">
               <div className="flex items-center justify-between">
                 <span className="text-slate-400">Stream Status:</span>
                 <span className={`font-semibold capitalize ${
-                  uploadStatus === 'replaying' ? 'text-sky-400' :
+                  uploadStatus === 'replaying' ? 'text-blue-400' :
                   uploadStatus === 'completed' ? 'text-emerald-400' :
                   uploadStatus === 'stopped' ? 'text-amber-400' : 'text-rose-400'
                 }`}>
@@ -258,7 +258,7 @@ export default function FileUploadModal({ isOpen, onClose, onUploadComplete }) {
         </div>
 
         {/* Footer */}
-        <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-[#23324d] bg-slate-900/50">
+        <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-[#1e293b] bg-slate-900/50">
           {isUploading ? (
             <button
               onClick={handleStop}
@@ -278,7 +278,7 @@ export default function FileUploadModal({ isOpen, onClose, onUploadComplete }) {
               <button
                 onClick={handleUpload}
                 disabled={!file}
-                className="flex items-center gap-1.5 px-4 py-2 text-xs font-semibold rounded-lg bg-sky-500 hover:bg-sky-400 text-slate-950 disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
+                className="flex items-center gap-1.5 px-4 py-2 text-xs font-semibold rounded-lg bg-blue-500 hover:bg-blue-400 text-slate-950 disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
               >
                 <Play className="w-3.5 h-3.5 fill-current" />
                 Stream Captured Flows

@@ -1,8 +1,26 @@
 import React from 'react';
-import { 
-  ShieldAlert, Radio, HelpCircle, Power, Trash2, 
-  UploadCloud, Eye, Sliders, Activity, Network, Search, Settings
+import {
+  ShieldAlert, HelpCircle, Power, Trash2, Eye, Sliders,
+  Activity, Network, Search, Settings, Sparkles, Database
 } from 'lucide-react';
+
+const PRIMARY_TABS = [
+  { id: 'monitor', name: 'Live Monitor', icon: Activity, description: 'Telemetry & incident triage' },
+  { id: 'chat', name: 'AI Analyst', icon: Sparkles, description: 'Conversational threat analysis' },
+  { id: 'ingest', name: 'Data Ingestion', icon: Database, description: 'Internet feed, PCAP & scenarios' }
+];
+
+const SECONDARY_TABS = [
+  { id: 'topology', name: 'Topology Lab', icon: Network },
+  { id: 'forensics', name: 'Forensic Scanner', icon: Search }
+];
+
+const STREAM_SOURCES = [
+  { id: 'LIVE_BACKEND', label: 'Live backend stream' },
+  { id: 'CLOUD_SIMULATION', label: 'Offline simulator' }
+];
+
+const iconButton = 'p-1.5 rounded-lg border border-soc-border bg-soc-bg text-slate-400 hover:text-slate-100 hover:border-slate-600 transition-colors';
 
 export default function Header({
   isConnected,
@@ -14,211 +32,171 @@ export default function Header({
   onToggleAutoDetection,
   onClearAlerts,
   onToggleGuide,
-  onOpenUpload,
   isExecutiveView,
   onToggleViewMode,
+  onSelectStreamSource,
   currentTab,
   onSelectTab
 }) {
-  const tabs = [
-    {
-      id: 'monitor',
-      name: 'Live Threat Monitor',
-      icon: Activity,
-      badge: totalAlerts > 0 ? totalAlerts : null,
-      description: 'Real-time Telemetry & SOC Triage'
-    },
-    {
-      id: 'topology',
-      name: 'Topology & Attack Lab',
-      icon: Network,
-      badge: null,
-      description: 'Network Graph & Threat Simulations'
-    },
-    {
-      id: 'forensics',
-      name: 'Forensic & Target Scanner',
-      icon: Search,
-      badge: null,
-      description: 'Target Probing & PCAP Ingestion'
-    }
-  ];
+  const isLive = isConnected && connectionMode === 'LIVE_BACKEND';
+
+  const statusLabel = !isConnected
+    ? 'Diode: OFFLINE'
+    : isLive
+      ? 'Diode: ACTIVE (1-way)'
+      : 'Diode: SIMULATED';
+
+  const statusTone = !isConnected
+    ? 'text-soc-danger border-soc-danger/40 bg-soc-danger/10'
+    : isLive
+      ? 'text-soc-success border-soc-success/40 bg-soc-success/10'
+      : 'text-soc-primary border-soc-primary/40 bg-soc-primary/10';
+
+  const facilityLine = hasCriticalThreat
+    ? { tone: 'border-soc-danger/50 text-soc-danger', text: 'Critical incident in progress — immediate analyst review required.' }
+    : totalAlerts > 0
+      ? { tone: 'border-soc-warning/50 text-soc-warning', text: 'Elevated advisory — anomalous flow behaviour inside the current 60s window.' }
+      : { tone: 'border-soc-success/50 text-soc-success', text: 'All monitored industrial endpoints nominal — zero anomalous signatures.' };
 
   return (
-    <header className="bg-[#151f32] border-b border-[#23324d] px-4 md:px-6 py-4 flex flex-col gap-4">
-      {/* Top Bar: Title & Global Actions */}
-      <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4">
-        <div className="flex items-center gap-3">
-          <div className="p-2.5 bg-sky-950/60 border border-sky-500/40 rounded-xl text-sky-400">
-            <ShieldAlert className="w-6 h-6" />
+    <header className="bg-soc-card border-b border-soc-border px-4 md:px-6">
+      {/* Top bar: identity, diode status, stream source, settings */}
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 py-3">
+        <div className="flex items-center gap-2.5 min-w-0">
+          <div className="p-2 rounded-lg bg-soc-primary/10 border border-soc-primary/30 text-soc-primary">
+            <ShieldAlert className="w-5 h-5" />
           </div>
-          <div>
-            <div className="flex items-center gap-2">
-              <h1 className="text-lg font-bold text-slate-100 tracking-tight">
-                CYBER THREAT SOC <span className="text-sky-400 font-medium">| Data Diode Defense</span>
-              </h1>
-              <span className="px-2 py-0.5 text-[10px] font-mono bg-sky-950 text-sky-300 border border-sky-800 rounded font-semibold uppercase">
-                Air-Gap Secured
-              </span>
-            </div>
-            <p className="text-xs text-slate-400 mt-0.5">
-              Zero-return-path passive analytical telemetry for critical industrial infrastructure
+          <div className="min-w-0">
+            <h1 className="text-base font-semibold text-slate-100 tracking-tight truncate">
+              Cyber Threat SOC <span className="text-slate-400 font-normal">· Data Diode Defense</span>
+            </h1>
+            <p className="text-[11px] text-slate-400 truncate">
+              Passive metadata-only inspection of unidirectional industrial traffic
             </p>
           </div>
         </div>
 
-        {/* Global Utility Controls */}
         <div className="flex flex-wrap items-center gap-2">
-          {/* Executive / Forensic Mode Toggle */}
-          <button
-            onClick={onToggleViewMode}
-            className="flex items-center gap-1.5 px-3 py-1.5 bg-[#0b1120] hover:bg-slate-800 border border-[#23324d] rounded-lg text-xs font-medium text-slate-200 transition-colors shadow-sm"
-            title="Toggle between simplified executive explanations and deep forensic math metrics"
-          >
-            {isExecutiveView ? <Eye className="w-3.5 h-3.5 text-sky-400" /> : <Sliders className="w-3.5 h-3.5 text-sky-400" />}
-            <span>Mode: {isExecutiveView ? 'Executive' : 'Deep Forensic'}</span>
-          </button>
+          {/* Diode status badge */}
+          <span className={`flex items-center gap-2 px-2.5 py-1.5 rounded-lg border text-[11px] font-mono font-medium ${statusTone}`}>
+            <span className="relative flex h-2 w-2">
+              {isConnected && (
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-current opacity-60" />
+              )}
+              <span className="relative inline-flex rounded-full h-2 w-2 bg-current" />
+            </span>
+            {statusLabel}
+          </span>
 
-          {/* Upload PCAP / Zeek Button */}
-          <button
-            onClick={onOpenUpload}
-            className="flex items-center gap-1.5 px-3 py-1.5 bg-sky-500 hover:bg-sky-400 text-slate-950 rounded-lg text-xs font-semibold shadow-sm transition-colors"
-          >
-            <UploadCloud className="w-3.5 h-3.5" />
-            <span>Upload Capture</span>
-          </button>
+          {/* Stream source selector */}
+          <label className="flex items-center gap-1.5 bg-soc-bg border border-soc-border rounded-lg pl-2.5 pr-1 py-1">
+            <span className="text-[11px] text-slate-400 font-medium">Stream</span>
+            <select
+              value={connectionMode}
+              onChange={(e) => onSelectStreamSource && onSelectStreamSource(e.target.value)}
+              className="bg-transparent text-[11px] text-slate-100 font-mono py-0.5 focus:outline-none cursor-pointer"
+              title="Select the telemetry source feeding this dashboard"
+            >
+              {STREAM_SOURCES.map((src) => (
+                <option key={src.id} value={src.id} className="bg-soc-card">{src.label}</option>
+              ))}
+            </select>
+          </label>
 
-          {/* Auto-Detection Toggle */}
+          {/* Engine enable/disable */}
           <button
             onClick={onToggleAutoDetection}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-medium transition-colors ${
+            className={`p-1.5 rounded-lg border transition-colors ${
               autoDetectionEnabled
-                ? 'bg-emerald-950/60 border-emerald-800 text-emerald-300 hover:bg-emerald-900/60'
-                : 'bg-amber-950/60 border-amber-800 text-amber-300 hover:bg-amber-900/60'
+                ? 'border-soc-success/40 bg-soc-success/10 text-soc-success hover:bg-soc-success/20'
+                : 'border-soc-warning/40 bg-soc-warning/10 text-soc-warning hover:bg-soc-warning/20'
             }`}
+            title={`Detection engine ${autoDetectionEnabled ? 'active — click to pause' : 'paused — click to resume'}`}
           >
-            <Power className="w-3.5 h-3.5" />
-            <span>Engine: {autoDetectionEnabled ? 'Active' : 'Paused'}</span>
+            <Power className="w-4 h-4" />
           </button>
 
-          {/* Clear Alerts */}
+          {/* Clear alerts */}
           {totalAlerts > 0 && (
             <button
               onClick={onClearAlerts}
-              className="flex items-center gap-1.5 px-2.5 py-1.5 bg-slate-900 hover:bg-rose-950/60 border border-[#23324d] hover:border-rose-800 rounded-lg text-xs font-medium text-slate-300 hover:text-rose-300 transition-colors"
+              className="p-1.5 rounded-lg border border-soc-border bg-soc-bg text-slate-400 hover:text-soc-danger hover:border-soc-danger/40 transition-colors"
+              title={`Clear ${totalAlerts} logged alerts`}
             >
-              <Trash2 className="w-3.5 h-3.5" />
-              <span>Clear ({totalAlerts})</span>
+              <Trash2 className="w-4 h-4" />
             </button>
           )}
 
-          {/* How It Works Guide */}
-          <button
-            onClick={onToggleGuide}
-            className="p-1.5 bg-[#0b1120] hover:bg-slate-800 border border-[#23324d] rounded-lg text-slate-400 hover:text-slate-200 transition-colors"
-            title="System Architecture & Guide"
-          >
+          {/* Executive / forensic detail toggle */}
+          <button onClick={onToggleViewMode} className={iconButton} title="Toggle executive vs deep-forensic detail">
+            {isExecutiveView ? <Eye className="w-4 h-4" /> : <Sliders className="w-4 h-4" />}
+          </button>
+
+          <button onClick={onToggleGuide} className={iconButton} title="How this system works">
             <HelpCircle className="w-4 h-4" />
           </button>
 
-          {/* Connection Status & Settings */}
-          <div className="flex items-center gap-1.5 bg-[#0b1120] border border-[#23324d] rounded-lg p-1">
-            <div className="flex items-center gap-2 px-2.5 py-1">
-              <span className="relative flex h-2.5 w-2.5">
-                <span className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${
-                  isConnected ? (connectionMode === 'LIVE_BACKEND' ? 'bg-emerald-400' : 'bg-sky-400') : 'bg-rose-400'
-                }`} />
-                <span className={`relative inline-flex rounded-full h-2.5 w-2.5 ${
-                  isConnected ? (connectionMode === 'LIVE_BACKEND' ? 'bg-emerald-500' : 'bg-sky-500') : 'bg-rose-500'
-                }`} />
-              </span>
-              <span className={`text-xs font-mono font-medium ${
-                isConnected ? (connectionMode === 'LIVE_BACKEND' ? 'text-emerald-400' : 'text-sky-300') : 'text-rose-400'
-              }`}>
-                {isConnected ? (connectionMode === 'LIVE_BACKEND' ? 'LIVE BACKEND' : 'CLOUD SIMULATOR') : 'DISCONNECTED'}
-              </span>
-            </div>
-            {onOpenBackendSettings && (
-              <button
-                onClick={onOpenBackendSettings}
-                className="p-1 rounded text-slate-400 hover:text-slate-200 hover:bg-slate-800 transition-colors"
-                title="Configure Backend API Gateway"
-              >
-                <Settings className="w-3.5 h-3.5" />
-              </button>
-            )}
-          </div>
+          {onOpenBackendSettings && (
+            <button onClick={onOpenBackendSettings} className={iconButton} title="Backend gateway settings">
+              <Settings className="w-4 h-4" />
+            </button>
+          )}
         </div>
       </div>
 
-      {/* 3 Dedicated Webpage Navigation Tabs */}
-      <nav className="flex items-center gap-2 border-t border-[#23324d]/80 pt-3 overflow-x-auto">
-        {tabs.map((tab) => {
+      {/* Navigation: three pillars, plus lab tooling */}
+      <nav className="flex items-center gap-1.5 pb-2 overflow-x-auto border-t border-soc-border/70 pt-2.5">
+        {PRIMARY_TABS.map((tab) => {
           const Icon = tab.icon;
           const isActive = currentTab === tab.id;
           return (
             <button
               key={tab.id}
               onClick={() => onSelectTab(tab.id)}
-              className={`flex items-center gap-2.5 px-4 py-2 rounded-xl text-xs font-medium transition-all duration-200 whitespace-nowrap relative ${
+              title={tab.description}
+              className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-medium border whitespace-nowrap transition-colors ${
                 isActive
-                  ? 'bg-sky-500/15 text-sky-300 border border-sky-500/40 shadow-sm shadow-sky-950'
-                  : 'bg-[#0b1120] text-slate-400 hover:text-slate-200 border border-[#23324d] hover:border-slate-700'
+                  ? 'bg-soc-primary/12 border-soc-primary/40 text-soc-primary'
+                  : 'border-transparent text-slate-400 hover:text-slate-100 hover:bg-soc-bg'
               }`}
             >
-              <Icon className={`w-4 h-4 ${isActive ? 'text-sky-400' : 'text-slate-400'}`} />
-              <div className="text-left">
-                <span className={`font-semibold ${isActive ? 'text-white' : ''}`}>
-                  {tab.name}
-                </span>
-              </div>
-              {tab.badge !== null && (
-                <span className={`px-1.5 py-0.5 text-[10px] font-mono rounded-full font-bold ml-1 ${
-                  isActive ? 'bg-sky-500 text-slate-950' : 'bg-rose-950 text-rose-300 border border-rose-800'
-                }`}>
-                  {tab.badge}
+              <Icon className="w-3.5 h-3.5" />
+              {tab.name}
+              {tab.id === 'monitor' && totalAlerts > 0 && (
+                <span className="ml-0.5 px-1.5 py-0.5 rounded-full text-[10px] font-mono font-semibold bg-soc-danger/15 text-soc-danger border border-soc-danger/30">
+                  {totalAlerts}
                 </span>
               )}
             </button>
           );
         })}
+
+        <span className="mx-1.5 h-5 w-px bg-soc-border" />
+
+        {SECONDARY_TABS.map((tab) => {
+          const Icon = tab.icon;
+          const isActive = currentTab === tab.id;
+          return (
+            <button
+              key={tab.id}
+              onClick={() => onSelectTab(tab.id)}
+              className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[11px] font-medium whitespace-nowrap transition-colors ${
+                isActive ? 'text-slate-100 bg-soc-bg' : 'text-slate-500 hover:text-slate-300'
+              }`}
+            >
+              <Icon className="w-3.5 h-3.5" />
+              {tab.name}
+            </button>
+          );
+        })}
       </nav>
 
-      {/* Traffic Light Facility Status Banner */}
-      <div className={`px-4 py-2.5 rounded-xl border text-xs font-medium flex items-center justify-between transition-colors shadow-sm ${
-        hasCriticalThreat
-          ? 'bg-rose-950/50 border-rose-800 text-rose-200'
-          : totalAlerts > 0
-          ? 'bg-amber-950/50 border-amber-800 text-amber-200'
-          : 'bg-emerald-950/50 border-emerald-800 text-emerald-200'
-      }`}>
-        <div className="flex items-center gap-2.5">
-          {hasCriticalThreat ? (
-            <span className="flex h-3 w-3 relative">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
-              <span className="relative inline-flex rounded-full h-3 w-3 bg-rose-500"></span>
-            </span>
-          ) : totalAlerts > 0 ? (
-            <span className="inline-flex rounded-full h-3 w-3 bg-amber-400"></span>
-          ) : (
-            <span className="inline-flex rounded-full h-3 w-3 bg-emerald-400"></span>
-          )}
-
-          <span className="font-bold tracking-wide uppercase text-[11px]">
-            {hasCriticalThreat ? 'CRITICAL INCIDENT DETECTED:' : totalAlerts > 0 ? 'ELEVATED SECURITY ADVISORY:' : 'FACILITY STATUS: NORMAL'}
-          </span>
-          <span className="text-slate-300 hidden md:inline">
-            {hasCriticalThreat
-              ? 'Active high-confidence threat in progress across the unidirectional optical datalink. Immediate analyst review required.'
-              : totalAlerts > 0
-              ? 'Unusual traffic frequency or connection fan-out observed in the current 60s sliding window.'
-              : 'All industrial controllers and air-gapped systems secure. Zero anomalous threat signatures detected.'}
-          </span>
-        </div>
-
-        <span className="text-[11px] font-mono text-slate-400 shrink-0">
-          {totalAlerts} Total Alerts Logged
+      {/* Compact facility status line */}
+      <div className={`mb-3 border-l-2 pl-3 py-0.5 text-[11px] flex items-center gap-2 ${facilityLine.tone}`}>
+        <span className="font-semibold uppercase tracking-wide">
+          {hasCriticalThreat ? 'Critical' : totalAlerts > 0 ? 'Advisory' : 'Normal'}
         </span>
+        <span className="text-slate-400 truncate">{facilityLine.text}</span>
       </div>
     </header>
   );

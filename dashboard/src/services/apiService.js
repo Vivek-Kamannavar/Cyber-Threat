@@ -49,6 +49,19 @@ export const setStoredBackendUrl = (url) => {
   }
 };
 
+/**
+ * Selects the telemetry source: 'LIVE_BACKEND' clears any override (auto-detect),
+ * 'CLOUD_SIMULATION' pins an empty URL so the autonomous simulator takes over.
+ */
+export function setStreamSource(mode) {
+  if (typeof window === 'undefined') return;
+  if (mode === 'CLOUD_SIMULATION') {
+    localStorage.setItem(STORAGE_KEY, '');
+  } else {
+    localStorage.removeItem(STORAGE_KEY);
+  }
+}
+
 // Initial alerts baseline for authentic demo
 const INITIAL_DEMO_ALERTS = [
   {
@@ -685,6 +698,115 @@ export async function analyzeAlertWithAi(alertId, alert) {
     ],
     recommended_snort_rule: `alert tcp ${src} any -> ${dst} any (msg:"SOC_DIODE_${threatClass.replace(/[^a-zA-Z0-9]/g, '_').toUpperCase()}"; flow:to_server,established; classtype:trojan-activity; sid:9001042; rev:1;)`
   };
+}
+
+/**
+ * AI SOC Interactive Chat.
+ */
+/**
+ * Conversational AI Security Analyst — context-injected SOC chat.
+ * Resolves to { response, mode: 'GROQ' | 'OFFLINE_HEURISTIC', suggestions: string[] }.
+ */
+export async function chatWithAnalyst(message, options = {}) {
+  const { history = [], alertId = null, telemetry = null, alerts = [] } = options;
+  const backendUrl = getStoredBackendUrl();
+
+  if (backendUrl && !isSimulating) {
+    try {
+      const res = await fetch(`${backendUrl}/api/copilot/chat`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          message,
+          alert_id: alertId,
+          history: history.slice(-6).map(({ role, content }) => ({ role, content }))
+        })
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data && data.response) return data;
+      }
+    } catch (e) {
+      console.warn("Backend analyst chat unavailable, answering locally:", e);
+    }
+  }
+
+  return buildLocalAnalystAnswer(message, telemetry, alerts);
+}
+
+function buildLocalAnalystAnswer(message, telemetry, alerts) {
+  const query = (message || '').toLowerCase();
+  const list = Array.isArray(alerts) ? alerts : [];
+  const focus = list.length > 0
+    ? list.reduce((best, alert) => ((alert.confidence_score || 0) > (best.confidence_score || 0) ? alert : best), list[0])
+    : null;
+
+  const suggestions = focus
+    ? [`Explain incident ${focus.alert_id}`, 'What should I contain first?', 'Generate firewall rules', 'Summarize threat posture']
+    : ['Summarize threat posture', 'How does the data diode constrain an attacker?'];
+
+  let response;
+  if (query.includes('firewall') || query.includes('block') || query.includes('iptables')) {
+    const src = focus?.flow_identifier?.src_ip || '<SOURCE_IP>';
+    const dst = focus?.flow_identifier?.dst_ip || '<DEST_IP>';
+    response = `### Firewall Containment\n\n\`\`\`bash\niptables -A FORWARD -s ${src} -d ${dst} -j DROP\n\`\`\`\n\nApply this on the **internal side** of the diode; the optical link is one-way, so egress suppression is what severs the control channel.`;
+  } else if (query.includes('explain') || query.includes('incident') || query.includes('what happened')) {
+    response = focus
+      ? `### Incident ${focus.alert_id} — ${focus.threat_class}\n\n- **Confidence:** ${Math.round((focus.confidence_score || 0) * 100)}%\n- **Flow:** \`${focus.flow_identifier?.src_ip} → ${focus.flow_identifier?.dst_ip}\`\n- **Reason:** ${focus.supporting_evidence_feature?.technical_reason || focus.supporting_evidence_feature?.reason || 'behavioural outlier'}`
+      : '### Incident Explanation\n\nNo incident is currently logged, so there is nothing to explain.';
+  } else if (query.includes('contain') || query.includes('remediat') || query.includes('respond')) {
+    response = '### Containment Plan\n\n1. Isolate the affected host at the switch port (never reboot industrial controllers).\n2. Capture a volatile memory image before any restart.\n3. Verify no adjacent OT endpoint is beaconing to the same destination.\n4. Keep the diode return path physically severed — containment never requires outbound traffic from the enclave.';
+  } else {
+    const pps = Math.round(telemetry?.pps || 0);
+    const critical = list.filter(a => (a.confidence_score || 0) >= 0.9).length;
+    response = `### Threat Posture Summary\n\n- **Active incidents:** ${list.length} (${critical} critical)\n- **Window throughput:** ${pps} pps\n- **Facility status:** ${critical > 0 ? 'CRITICAL' : list.length > 0 ? 'ELEVATED' : 'NORMAL'}\n\nAll telemetry crossed a unidirectional diode, so an adversary has no reverse channel to command a host once it is isolated.`;
+  }
+
+  return { response, mode: 'OFFLINE_HEURISTIC', suggestions };
+}
+
+/**
+ * Out-of-band adapter feed status (internet threat-intel ingestion bridge).
+ */
+export async function fetchFeedStatus() {
+  const backendUrl = getStoredBackendUrl();
+  if (backendUrl && !isSimulating) {
+    try {
+      const res = await fetch(`${backendUrl}/api/ingest/feed/status`);
+      if (res.ok) return await res.json();
+    } catch (e) {
+      console.warn("Feed status unavailable:", e);
+    }
+  }
+
+  return {
+    available: false,
+    package_dir: null,
+    compliance: 'Backend unreachable — running in offline simulation.',
+    indicator_count: 0,
+    by_severity: {},
+    indicators: [],
+    sources: [],
+    last_refresh: null
+  };
+}
+
+/**
+ * Runs the adapter pipeline(s) out of band and rebuilds the local indicator cache.
+ */
+export async function refreshFeed(host) {
+  const backendUrl = getStoredBackendUrl();
+  if (backendUrl && !isSimulating) {
+    try {
+      const query = host ? `?host=${encodeURIComponent(host)}` : '';
+      const res = await fetch(`${backendUrl}/api/ingest/feed/refresh${query}`, { method: 'POST' });
+      if (res.ok) return await res.json();
+    } catch (e) {
+      console.warn("Feed refresh failed:", e);
+    }
+  }
+
+  return { status: 'unavailable', detail: 'Backend unreachable — feed refresh skipped.', sources: [], indicators: 0 };
 }
 
 /**

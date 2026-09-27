@@ -1,6 +1,7 @@
 @import "tailwindcss";
 
 @theme {
+  /* Slate scale (used for text and muted metadata) */
   --color-slate-900: #0f172a;
   --color-slate-800: #1e293b;
   --color-slate-700: #334155;
@@ -10,22 +11,31 @@
   --color-slate-300: #cbd5e1;
   --color-slate-200: #e2e8f0;
   --color-slate-100: #f1f5f9;
-  
-  --color-soc-bg: #0b1120;
-  --color-soc-card: #151f32;
-  --color-soc-card-hover: #1c2942;
-  --color-soc-border: #23324d;
-  --color-soc-primary: #38bdf8;
-  --color-soc-success: #10b981;
-  --color-soc-warning: #f59e0b;
+
+  /* Clean SOC palette: deep obsidian surfaces + electric cobalt accent */
+  --color-soc-bg: #090d16;
+  --color-soc-card: #0f172a;
+  --color-soc-card-hover: #152036;
+  --color-soc-border: #1e293b;
+  --color-soc-primary: #3b82f6;
   --color-soc-danger: #ef4444;
+  --color-soc-warning: #f59e0b;
+  --color-soc-success: #10b981;
+  --color-soc-muted: #64748b;
+
+  /* Aliases for the existing cyber-* utility classes */
+  --color-cyber-bg: #090d16;
+  --color-cyber-card: #0f172a;
+  --color-cyber-card-hover: #152036;
+  --color-cyber-border: #1e293b;
+  --color-cyber-accent: #3b82f6;
 
   --font-sans: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   --font-mono: 'JetBrains Mono', 'Fira Code', monospace;
 }
 
 body {
-  background-color: #0b1120;
+  background-color: #090d16;
   color: #f1f5f9;
   font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   overflow-x: hidden;
@@ -40,16 +50,16 @@ body {
 }
 
 ::-webkit-scrollbar-track {
-  background: #0b1120;
+  background: #090d16;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #23324d;
+  background: #1e293b;
   border-radius: 3px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #38bdf8;
+  background: #3b82f6;
 }
 
 @keyframes fadeIn {

@@ -4,7 +4,9 @@ import ThreatDetailsModal from './components/ThreatDetailsModal';
 import FileUploadModal from './components/FileUploadModal';
 import AiCopilotDrawer from './components/AiCopilotDrawer';
 import BackendSettingsModal from './components/BackendSettingsModal';
+import AiChatbotPanel from './components/AiChatbotPanel';
 import LiveMonitorPage from './pages/LiveMonitorPage';
+import IngestionHubPage from './pages/IngestionHubPage';
 import TopologyLabPage from './pages/TopologyLabPage';
 import ForensicScannerPage from './pages/ForensicScannerPage';
 import { 
@@ -12,6 +14,7 @@ import {
   simulateThreat, 
   toggleAutoDetection, 
   clearAlerts, 
+  setStreamSource,
   eventBus 
 } from './services/apiService';
 import { HelpCircle, X } from 'lucide-react';
@@ -34,7 +37,7 @@ export default function App() {
   // Hash-based routing for 3 distinct pages
   const getInitialTab = () => {
     const hash = window.location.hash.replace('#', '').toLowerCase();
-    if (['monitor', 'topology', 'forensics'].includes(hash)) {
+    if (['monitor', 'chat', 'ingest', 'topology', 'forensics'].includes(hash)) {
       return hash;
     }
     return 'monitor';
@@ -46,7 +49,7 @@ export default function App() {
   useEffect(() => {
     const handleHashChange = () => {
       const hash = window.location.hash.replace('#', '').toLowerCase();
-      if (['monitor', 'topology', 'forensics'].includes(hash)) {
+      if (['monitor', 'chat', 'ingest', 'topology', 'forensics'].includes(hash)) {
         setActiveTab(hash);
       }
     };
@@ -168,6 +171,12 @@ export default function App() {
     }
   };
 
+  const handleSelectStreamSource = (mode) => {
+    if (mode === connectionMode) return;
+    setStreamSource(mode);
+    window.location.reload();
+  };
+
   const handleOpenCopilot = (alert) => {
     setActiveCopilotAlert(alert);
     setIsAiDrawerOpen(true);
@@ -180,7 +189,7 @@ export default function App() {
   const hasCriticalThreat = alerts.some(a => (a.confidence_score || 0) >= 0.90);
 
   return (
-    <div className="min-h-screen flex flex-col bg-[#0b1120] text-slate-100">
+    <div className="min-h-screen flex flex-col bg-[#090d16] text-slate-100">
       <Header
         isConnected={isConnected}
         connectionMode={connectionMode}
@@ -191,7 +200,7 @@ export default function App() {
         onToggleAutoDetection={handleToggleAutoDetection}
         onClearAlerts={handleClearAlerts}
         onToggleGuide={() => setShowGuideModal(true)}
-        onOpenUpload={() => setIsUploadModalOpen(true)}
+        onSelectStreamSource={handleSelectStreamSource}
         isExecutiveView={isExecutiveView}
         onToggleViewMode={() => setIsExecutiveView(!isExecutiveView)}
         currentTab={activeTab}
@@ -214,7 +223,26 @@ export default function App() {
           />
         )}
 
-        {/* Page 2: Network Topology & Simulation Lab */}
+        {/* Page 2: Conversational AI Security Analyst */}
+        {activeTab === 'chat' && (
+          <AiChatbotPanel
+            telemetry={telemetry}
+            alerts={alerts}
+            autoDetectionEnabled={autoDetectionEnabled}
+            onOpenAlert={(alert) => setSelectedAlert(alert)}
+          />
+        )}
+
+        {/* Page 3: Data Ingestion Hub (internet feed, capture replay, scenarios) */}
+        {activeTab === 'ingest' && (
+          <IngestionHubPage
+            onOpenUpload={() => setIsUploadModalOpen(true)}
+            onSimulate={handleSimulate}
+            onNavigateToTab={handleSelectTab}
+          />
+        )}
+
+        {/* Page 4: Network Topology & Simulation Lab */}
         {activeTab === 'topology' && (
           <TopologyLabPage
             alerts={alerts}
@@ -264,10 +292,10 @@ export default function App() {
       {/* How It Works Guide Modal */}
       {showGuideModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
-          <div className="bg-[#151f32] border border-[#23324d] rounded-2xl max-w-2xl w-full p-6 shadow-2xl relative space-y-4">
-            <div className="flex items-center justify-between border-b border-[#23324d] pb-3">
+          <div className="bg-[#0f172a] border border-[#1e293b] rounded-2xl max-w-2xl w-full p-6 shadow-2xl relative space-y-4">
+            <div className="flex items-center justify-between border-b border-[#1e293b] pb-3">
               <div className="flex items-center gap-2">
-                <HelpCircle className="w-5 h-5 text-sky-400" />
+                <HelpCircle className="w-5 h-5 text-blue-400" />
                 <h3 className="text-base font-semibold text-white">How This Cyber Threat System Works</h3>
               </div>
               <button
@@ -279,21 +307,21 @@ export default function App() {
             </div>
 
             <div className="space-y-3 text-xs text-slate-300 leading-relaxed">
-              <div className="bg-[#0b1120] p-3 rounded-lg border border-[#23324d]">
-                <div className="font-semibold text-sky-300 mb-1">1. What is a "Data Diode"?</div>
+              <div className="bg-[#090d16] p-3 rounded-lg border border-[#1e293b]">
+                <div className="font-semibold text-blue-300 mb-1">1. What is a "Data Diode"?</div>
                 <p>
                   A data diode is a physical optical fiber connection that strictly transmits light in one direction. It allows critical infrastructure (power plants, water systems, defense networks) to send telemetry out without any physical possibility of external attackers transmitting exploit payloads inward.
                 </p>
               </div>
 
-              <div className="bg-[#0b1120] p-3 rounded-lg border border-[#23324d]">
+              <div className="bg-[#090d16] p-3 rounded-lg border border-[#1e293b]">
                 <div className="font-semibold text-amber-300 mb-1">2. How does the AI detect attacks without decrypting payloads?</div>
                 <p>
                   Traditional tools break TLS encryption. Across a one-way diode, decryption is impossible. Our system extracts mathematical physics from packet headers: Shannon entropy on byte distributions, Inter-Arrival Time variance (botnet beaconing), and TLS JA3/JA4 cryptographic fingerprints.
                 </p>
               </div>
 
-              <div className="bg-[#0b1120] p-3 rounded-lg border border-[#23324d]">
+              <div className="bg-[#090d16] p-3 rounded-lg border border-[#1e293b]">
                 <div className="font-semibold text-rose-300 mb-1">3. What does the AI Copilot do?</div>
                 <p>
                   Powered by Groq's high-speed inference (Llama 3.3 70B), the copilot provides human-readable incident summaries, facility risk impact analyses, immediate step-by-step mitigation checklists, and copyable firewall rules for rapid containment.
@@ -304,7 +332,7 @@ export default function App() {
             <div className="pt-2 flex justify-end">
               <button
                 onClick={() => setShowGuideModal(false)}
-                className="px-4 py-2 bg-sky-500 hover:bg-sky-400 text-slate-950 font-semibold rounded-lg text-xs"
+                className="px-4 py-2 bg-blue-500 hover:bg-blue-400 text-slate-950 font-semibold rounded-lg text-xs"
               >
                 Understood
               </button>
@@ -313,7 +341,7 @@ export default function App() {
         </div>
       )}
 
-      <footer className="border-t border-[#23324d] py-4 text-center text-xs font-mono text-slate-500 bg-[#0b1120]">
+      <footer className="border-t border-[#1e293b] py-4 text-center text-xs font-mono text-slate-500 bg-[#090d16]">
         AI-Based Cyber Threat Detection Engine • Safe Unidirectional Data Diode Architecture
       </footer>
     </div>
