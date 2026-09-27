@@ -55,11 +55,13 @@ never appear in the SOC as indicators.
 - `.\venv\Scripts\python.exe -m pytest tests/` → **68 passed**
 - `npm run build --prefix dashboard` → clean production build
 - `npm run lint --prefix dashboard` → 0 errors
+- `scripts/smoke_test.py` against a live uvicorn server → **ALL PASS** (health, stats, feed 100 indicators, copilot chat, scenario injection, collector batch 1 accepted / 1 rejected, WebSocket snapshot + live telemetry)
+- Headless-Chrome pass over a live backend + vite: `#monitor` rendered live telemetry (recharts surface + KPI values, diode `ACTIVE (1-way)`), `#chat` answered a submitted question through the real API, `#ingest` listed the feed host with severity chips 54/34/10/2
 
 ---
 
 ## Next up (start here)
 1. **Commit the adapter in the ingestion package:** `E:\adapter-ingestion` is its own git repo; commit the three new files there (adapter, fixture, verify script) so the feed is reproducible.
-2. **Full Integration Smoke Test:** start backend (`python -m uvicorn backend.main:app --reload`) and dashboard (`npm run dev --prefix dashboard`), then confirm the Live Monitor WebSocket stream, the AI Analyst tab and the Ingestion Hub feed panel in a browser.
+2. **Eyeball it yourself:** the automated pass is green, but the screenshots in `scratch/smoke/` (gitignored) are the only human-visible record — open the dashboard in your own browser and skim the three tabs before the jury run.
 3. **Optional volume upgrade:** add `template` support (or an object-valued `records_path`) to the ingestion framework to unlock the IoC blocklists (Feodo/URLhaus) alongside the advisory feed.
 4. **Jury Demo & Evaluation:** review presentation flow using assets in `refer/CyberThreat_Detection_Demo.mp4` and `refer/Cyber_Threat_Detection_Whitepaper.html`.

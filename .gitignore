@@ -52,6 +52,7 @@ backend/data/threat_intel.json
 # Large Media (>100MB exceeds GitHub push limit)
 refer/YouTube_video.mp4
 refer/scratch/
+scratch/
 
 # Firebase build cache
 .firebase/
