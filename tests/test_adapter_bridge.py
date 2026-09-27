@@ -251,10 +251,52 @@ def _scaffold_package(tmp_path):
     return package_dir
 
 
+def _bridge(tmp_path, package_dir, **kwargs) -> AdapterFeedBridge:
+    """Bridge scoped to the scaffold host (the real default allowlist is api.github.com)."""
+    kwargs.setdefault("feed_hosts", ("threatfeed.example",))
+    kwargs.setdefault("cache_path", str(tmp_path / "cache.json"))
+    return AdapterFeedBridge(package_dir=str(package_dir), **kwargs)
+
+
+def test_bridge_consumes_only_allowlisted_threat_intel_hosts(tmp_path):
+    """Unrelated adapters in the package must never reach the SOC indicator cache."""
+    package_dir = _scaffold_package(tmp_path)
+    unrelated = {"version": 1, "host": "earthquake.usgs.gov", "access": {"tier": 0, "kind": "json-api", "url": "https://earthquake.usgs.gov/feed"}}
+    (package_dir / "adapters" / "earthquake.usgs.gov.adapter.json").write_text(json.dumps(unrelated), encoding="utf-8")
+    (package_dir / "store" / "earthquake.usgs.gov.jsonl").write_text(
+        json.dumps({"id": "eq:1", "fields": {"url": "https://earthquake.usgs.gov/eventpage/1"}}),
+        encoding="utf-8",
+    )
+
+    discovered = [src["host"] for src in discover_adapters(str(package_dir))]
+    assert discovered == ["earthquake.usgs.gov", "threatfeed.example"]
+
+    scoped = _bridge(tmp_path, package_dir)
+    assert [src["host"] for src in scoped.sources()] == ["threatfeed.example"]
+    assert len(scoped.reload()) == 2
+    assert scoped.status()["indicator_count"] == 2
+    assert scoped.status()["feed_hosts"] == ["threatfeed.example"]
+
+    everything = _bridge(tmp_path, package_dir, feed_hosts=("*",))
+    assert len(everything.sources()) == 2
+    assert len(everything.reload()) == 3  # the earthquake URL is classified too
+    assert everything.status()["feed_hosts"] == "all"
+
+
+def test_feed_hosts_come_from_env_when_not_passed(tmp_path, monkeypatch):
+    package_dir = _scaffold_package(tmp_path)
+    monkeypatch.setenv("ADAPTER_FEED_HOSTS", " threatfeed.example , other.example ")
+    assert AdapterFeedBridge(package_dir=str(package_dir), cache_path=str(tmp_path / "c.json")).feed_hosts == (
+        "threatfeed.example",
+        "other.example",
+    )
+    assert AdapterFeedBridge(package_dir=str(package_dir), cache_path=str(tmp_path / "c.json"), feed_hosts=()).feed_hosts is None
+
+
 def test_bridge_discovers_adapters_and_builds_local_indicator_cache(tmp_path):
     package_dir = _scaffold_package(tmp_path)
     cache_path = tmp_path / "backend" / "data" / "threat_intel.json"
-    bridge = AdapterFeedBridge(package_dir=str(package_dir), cache_path=str(cache_path))
+    bridge = _bridge(tmp_path, package_dir, cache_path=str(cache_path))
 
     assert bridge.available() is True
     assert [src["host"] for src in discover_adapters(str(package_dir))] == ["threatfeed.example"]
@@ -274,11 +316,7 @@ def test_bridge_discovers_adapters_and_builds_local_indicator_cache(tmp_path):
 def test_bridge_refresh_reports_unavailable_without_runner(tmp_path):
     """A missing node binary degrades to an explicit status instead of raising."""
     package_dir = _scaffold_package(tmp_path)
-    bridge = AdapterFeedBridge(
-        package_dir=str(package_dir),
-        cache_path=str(tmp_path / "cache.json"),
-        node_bin="definitely-not-node-xyz",
-    )
+    bridge = _bridge(tmp_path, package_dir, node_bin="definitely-not-node-xyz")
 
     result = bridge.refresh()
     assert result["status"] in ("degraded", "refreshed")
@@ -292,7 +330,7 @@ def test_bridge_refresh_reports_unavailable_without_runner(tmp_path):
 
 def test_bridge_matches_flows_against_cached_indicators(tmp_path):
     package_dir = _scaffold_package(tmp_path)
-    bridge = AdapterFeedBridge(package_dir=str(package_dir), cache_path=str(tmp_path / "cache.json"))
+    bridge = _bridge(tmp_path, package_dir)
     bridge.reload()
 
     ip_match = bridge.match_flow({"flow_identifier": {"src_ip": "192.168.10.20", "dst_ip": "203.0.113.77"}})
@@ -307,7 +345,7 @@ def test_bridge_matches_flows_against_cached_indicators(tmp_path):
 
 def test_bridge_intel_matches_surface_through_stream_batch(tmp_path):
     package_dir = _scaffold_package(tmp_path)
-    bridge = AdapterFeedBridge(package_dir=str(package_dir), cache_path=str(tmp_path / "cache.json"))
+    bridge = _bridge(tmp_path, package_dir)
     bridge.reload()
 
     detector = RecordingDetector()

@@ -17,7 +17,9 @@ Two ingestion paths are supported:
 
 1. **Threat-intel feed** (`AdapterFeedBridge`) — runs adapter pipelines, normalizes each
    stored record into an indicator (``ipv4`` / ``domain`` / ``url`` / ``sha256``) and keeps
-   a bounded local cache the API can read.
+   a bounded local cache the API can read. Only adapters on the configured threat-intel
+   host allowlist are consumed (``DEFAULT_FEED_HOSTS`` / ``ADAPTER_FEED_HOSTS``), so the
+   package's unrelated adapters never reach the SOC.
 2. **Collector stream** (`normalize_event` / `ingest_stream_batch`) — accepts batches of
    already-observed packet events from the diode-side collector, normalizes them into the
    engine flow schema and feeds ``ThreatDetector.process_flow``.
@@ -46,6 +48,12 @@ DEDUPE_TTL_SECONDS = 30.0
 DEFAULT_CACHE_PATH = os.path.join(
     os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "backend", "data", "threat_intel.json"
 )
+
+# Only adapters that actually publish threat intelligence may reach the SOC indicator
+# cache -- the ingestion package also carries unrelated adapters (earthquake feeds, job
+# boards) whose records would otherwise be presented as indicators. Override with
+# ADAPTER_FEED_HOSTS (comma-separated) or "*" to accept every discovered adapter.
+DEFAULT_FEED_HOSTS = ("api.github.com",)
 
 # Field names that commonly carry an indicator value, checked before the generic scan.
 INDICATOR_FIELDS = (
@@ -233,6 +241,19 @@ def dedupe_indicators(indicators: Iterable[Dict[str, Any]]) -> List[Dict[str, An
 # ----------------------------------------------------------------------
 # Adapter-ingestion package runner
 # ----------------------------------------------------------------------
+def _resolve_feed_hosts(feed_hosts: Optional[Iterable[str]]) -> Optional[Tuple[str, ...]]:
+    """Returns the allowed adapter hosts, or None meaning "every discovered adapter"."""
+    candidates = feed_hosts
+    if candidates is None:
+        env_value = os.getenv("ADAPTER_FEED_HOSTS", "")
+        candidates = env_value.split(",") if env_value.strip() else DEFAULT_FEED_HOSTS
+
+    cleaned = tuple(dict.fromkeys(host.strip() for host in candidates if isinstance(host, str) and host.strip()))
+    if not cleaned or "*" in cleaned:
+        return None
+    return cleaned
+
+
 def discover_adapters(package_dir: str) -> List[Dict[str, str]]:
     """Lists usable ``<host>.adapter.json`` files shipped by the ingestion package."""
     adapters_dir = os.path.join(package_dir, "adapters")
@@ -269,10 +290,12 @@ class AdapterFeedBridge:
         package_dir: Optional[str] = None,
         cache_path: Optional[str] = None,
         node_bin: str = "node",
+        feed_hosts: Optional[Iterable[str]] = None,
     ):
         self.package_dir = package_dir or DEFAULT_PACKAGE_DIR
         self.cache_path = cache_path or DEFAULT_CACHE_PATH
         self.node_bin = node_bin
+        self.feed_hosts = _resolve_feed_hosts(feed_hosts)
         self._indicators: Optional[List[Dict[str, Any]]] = None
         self._last_refresh: Optional[Dict[str, Any]] = None
 
@@ -285,7 +308,11 @@ class AdapterFeedBridge:
         return os.path.isfile(self.runner_path)
 
     def sources(self) -> List[Dict[str, str]]:
-        return discover_adapters(self.package_dir) if self.available() else []
+        """Discovered adapters, narrowed to the configured threat-intel hosts."""
+        discovered = discover_adapters(self.package_dir) if self.available() else []
+        if self.feed_hosts is None:  # "*" — accept everything discovered
+            return discovered
+        return [source for source in discovered if source["host"] in self.feed_hosts]
 
     # -- refresh (out-of-band) ----------------------------------------
     def refresh(self, host: Optional[str] = None, timeout: float = 25.0) -> Dict[str, Any]:
@@ -432,6 +459,7 @@ class AdapterFeedBridge:
             "available": self.available(),
             "package_dir": self.package_dir,
             "cache_path": self.cache_path,
+            "feed_hosts": sorted(self.feed_hosts) if self.feed_hosts else "all",
             "compliance": "Out-of-band collector only: enclave reads local indicators, zero live lookups.",
             "indicator_count": len(indicators),
             "by_severity": by_severity,

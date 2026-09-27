@@ -164,8 +164,9 @@ export default function IngestionHubPage({ onOpenUpload, onSimulate, onNavigateT
           <div className="space-y-2">
             {sources.length === 0 ? (
               <p className="text-[11px] text-slate-400">
-                No adapter store detected. Set <code className="font-mono text-slate-300">ADAPTER_INGESTION_DIR</code> to a checkout of
-                <span className="font-mono text-slate-300"> @shrinivas-sn/adapter-ingestion</span> with adapter files in <span className="font-mono text-slate-300">adapters/</span>.
+                No threat-intel adapter detected. Point <code className="font-mono text-slate-300">ADAPTER_INGESTION_DIR</code> at a checkout of
+                <span className="font-mono text-slate-300"> @shrinivas-sn/adapter-ingestion</span> with adapter files in <span className="font-mono text-slate-300">adapters/</span>,
+                and list the hosts to trust in <code className="font-mono text-slate-300">ADAPTER_FEED_HOSTS</code> (default: {feed?.feed_hosts && feed.feed_hosts !== 'all' ? feed.feed_hosts.join(', ') : 'api.github.com'}).
               </p>
             ) : (
               sources.map((source) => (
