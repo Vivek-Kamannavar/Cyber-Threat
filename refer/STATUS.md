@@ -1,34 +1,25 @@
 # Project Status: Cyber-Threat Detection
 
-- **Current Branch:** `improvements`
+- **Current Branch:** `main` (synced to `origin/main` at commit `5549109`)
 - **Location:** `E:\Cyber-Threat`
-- **Active Local Ports:**
+- **Active Ports / Services:**
   - Backend API & WebSockets: `http://127.0.0.1:8000`
-  - SOC Dashboard: `http://127.0.0.1:5173`
-- **Current Milestone:** Ready for PR Merge & Phase 1 Execution
+  - SOC Dashboard: `http://127.0.0.1:5173` (also deployed to Firebase)
+- **Current Milestone:** Production Ready, Deployed, & Reorganized for Jury Verification
 
 ---
 
-## What Was Completed in this Audit & Setup Session
-1. **Full Architecture Audit:** Identified 6 critical production gaps (sliding window concurrency locks, RAM-only alerts, hardcoded thresholds, synthetic-only ingest, static topology, and missing automated tests).
-2. **Local Environment Verified:** Python 3.13 venv configured, all requirements installed, React frontend built, and baseline pipeline verified with 10/10 test alerts generated.
-3. **Master Implementation Plan Authored (`PLAN.md`):** Complete 5-phase execution plan:
-   - **Phase 1:** Backend Hardening, Concurrency (`asyncio.Lock`) & SQLite Persistence.
-   - **Phase 2:** Real-World PCAP & Zeek Log File Upload/Replay Pipeline.
-   - **Phase 3:** Free Groq AI Incident Copilot (`llama-3.3-70b-versatile` / `llama-3.1-8b-instant`).
-   - **Phase 4:** Production SOC UI Overhaul (Removing AI slop, adding traffic-light status & non-technical clarity).
-   - **Phase 5:** Automated Pytest Test Suite & Edge Case Matrix.
-4. **100% Clean & Portable:** Zero custom private skills or proprietary dependencies. Any AI agent or developer can run this out-of-the-box.
+## Completed Architecture & Capabilities
+1. **Thread-Safe Detection Engine:** `asyncio.Lock` sliding window manager (`backend/engine/window_manager.py`) with dynamic threshold config.
+2. **Persistent Storage:** SQLite persistence (`backend/database.py`) for alerts, metrics, and forensic audit logs.
+3. **Multi-Source Ingestion:** Scapy PCAP replay and Zeek/Bro log ingestion pipeline (`ingest/`) with `/api/upload` endpoint.
+4. **Groq AI Copilot:** Llama 3.3/3.1 threat reasoning engine (`backend/copilot.py`) providing automated incident containment advice.
+5. **Interactive SOC Dashboard:** React/Tailwind frontend featuring Live Monitor, Topology Lab, Forensic Scanner, and Backend Settings with live/mock fallback.
+6. **Project Packaging:** Docs, whitepapers, demo video, and research assets organized in `refer/` with Firebase hosting config (`firebase.json`).
 
 ---
 
-## Handoff & Next Steps for Repository Owner (Vivek)
-1. **Pull / Merge Branch:**
-   ```bash
-   git fetch origin
-   git checkout improvements
-   # or merge the PR directly into main on GitHub
-   ```
-2. **Execute Phase 1 in `agy`:**
-   Paste the following instruction into the Antigravity (`agy`) chat:
-   > *"Read PLAN.md and execute Phase 1: Backend Hardening, Concurrency & Persistence. Implement the asyncio.Lock in window_manager.py, SQLite persistence in backend/database.py, and externalize thresholds to config.py. Then run the Phase 1 verification tests."*
+## Next up (start here)
+1. **Full Integration Smoke Test:** Start backend (`python -m uvicorn backend.main:app --reload`) and dashboard (`npm run dev --prefix dashboard`) to verify live WebSocket streaming and PCAP upload workflows.
+2. **Run Test Suite:** Execute `pytest` across `tests/` to validate engine, database, copilot, and ingest modules.
+3. **Jury Demo & Evaluation:** Review presentation flow using assets in `refer/CyberThreat_Detection_Demo.mp4` and `refer/Cyber_Threat_Detection_Whitepaper.html`.
