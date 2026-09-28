@@ -1,34 +1,20 @@
 # Project Status: Cyber-Threat Detection
 
-- **Current Branch:** `improvements`
+- **Current Branch:** `feat/clean-ui-adapter-ai`
 - **Location:** `E:\Cyber-Threat`
-- **Active Local Ports:**
-  - Backend API & WebSockets: `http://127.0.0.1:8000`
-  - SOC Dashboard: `http://127.0.0.1:5173`
-- **Current Milestone:** Ready for PR Merge & Phase 1 Execution
+- **Active Ports:** Backend `8000` | Dashboard `5173` (also deployed to Firebase)
+- **Current Milestone:** Clean SOC interface, conversational AI analyst, and verified live threat-intel feed
 
 ---
 
-## What Was Completed in this Audit & Setup Session
-1. **Full Architecture Audit:** Identified 6 critical production gaps (sliding window concurrency locks, RAM-only alerts, hardcoded thresholds, synthetic-only ingest, static topology, and missing automated tests).
-2. **Local Environment Verified:** Python 3.13 venv configured, all requirements installed, React frontend built, and baseline pipeline verified with 10/10 test alerts generated.
-3. **Master Implementation Plan Authored (`PLAN.md`):** Complete 5-phase execution plan:
-   - **Phase 1:** Backend Hardening, Concurrency (`asyncio.Lock`) & SQLite Persistence.
-   - **Phase 2:** Real-World PCAP & Zeek Log File Upload/Replay Pipeline.
-   - **Phase 3:** Free Groq AI Incident Copilot (`llama-3.3-70b-versatile` / `llama-3.1-8b-instant`).
-   - **Phase 4:** Production SOC UI Overhaul (Removing AI slop, adding traffic-light status & non-technical clarity).
-   - **Phase 5:** Automated Pytest Test Suite & Edge Case Matrix.
-4. **100% Clean & Portable:** Zero custom private skills or proprietary dependencies. Any AI agent or developer can run this out-of-the-box.
+## Current State & Capabilities
+1. **Clean SOC Interface:** Unified 3-pillar navigation (Live Monitor, AI Security Analyst Chat, Data Ingestion Hub) using deep obsidian/cobalt palette (`dashboard/src/index.css`).
+2. **Conversational AI Analyst:** `/api/copilot/chat` endpoint powered by Groq Llama 3 with real-time sliding window context injection and deterministic offline fallbacks.
+3. **Live Threat-Intel Bridge:** `ingest/adapter_bridge.py` feeds 100 live GitHub security advisories into local cache (`backend/data/threat_intel.json`).
+4. **Verification Matrix:** 68/68 pytest suite passing, `npm run build --prefix dashboard` clean, live smoke test passing.
 
 ---
 
-## Handoff & Next Steps for Repository Owner (Vivek)
-1. **Pull / Merge Branch:**
-   ```bash
-   git fetch origin
-   git checkout improvements
-   # or merge the PR directly into main on GitHub
-   ```
-2. **Execute Phase 1 in `agy`:**
-   Paste the following instruction into the Antigravity (`agy`) chat:
-   > *"Read PLAN.md and execute Phase 1: Backend Hardening, Concurrency & Persistence. Implement the asyncio.Lock in window_manager.py, SQLite persistence in backend/database.py, and externalize thresholds to config.py. Then run the Phase 1 verification tests."*
+## Next up (start here)
+1. **Launch Stack:** Run `uvicorn backend.main:app` and `npm run dev --prefix dashboard` to visually review the 3 pillars in the browser.
+2. **Jury Evaluation & Demo:** Review demo presentation flow using assets in `refer/CyberThreat_Detection_Demo.mp4` and `refer/Cyber_Threat_Detection_Whitepaper.html`.

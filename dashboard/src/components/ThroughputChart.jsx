@@ -30,12 +30,12 @@ export default function ThroughputChart({ historyData }) {
             <AreaChart data={historyData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
               <defs>
                 <linearGradient id="ppsGlow" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#00f0ff" stopOpacity={0.4} />
-                  <stop offset="95%" stopColor="#00f0ff" stopOpacity={0.0} />
+                  <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.4} />
+                  <stop offset="95%" stopColor="#3b82f6" stopOpacity={0.0} />
                 </linearGradient>
                 <linearGradient id="alertGlow" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#ff0055" stopOpacity={0.5} />
-                  <stop offset="95%" stopColor="#ff0055" stopOpacity={0.0} />
+                  <stop offset="5%" stopColor="#ef4444" stopOpacity={0.5} />
+                  <stop offset="95%" stopColor="#ef4444" stopOpacity={0.0} />
                 </linearGradient>
               </defs>
               <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
@@ -43,18 +43,18 @@ export default function ThroughputChart({ historyData }) {
               {/* Primary Y-Axis for Packets/sec */}
               <YAxis yAxisId="left" stroke="#64748b" tick={{ fontSize: 11 }} domain={[0, 'auto']} />
               {/* Secondary Y-Axis for Alert Spikes */}
-              <YAxis yAxisId="right" orientation="right" stroke="#ff0055" tick={{ fontSize: 11 }} domain={[0, 10]} hide={true} />
+              <YAxis yAxisId="right" orientation="right" stroke="#ef4444" tick={{ fontSize: 11 }} domain={[0, 10]} hide={true} />
               <Tooltip
-                contentStyle={{ backgroundColor: '#121824', borderColor: '#1e293b', borderRadius: '8px', color: '#fff', fontSize: '12px' }}
-                labelStyle={{ color: '#00f0ff', fontWeight: 'bold' }}
+                contentStyle={{ backgroundColor: '#0f172a', borderColor: '#1e293b', borderRadius: '8px', color: '#fff', fontSize: '12px' }}
+                labelStyle={{ color: '#3b82f6', fontWeight: 'bold' }}
                 formatter={(value, name) => {
                   if (name === 'pps') return [`${value} pkts/s`, 'Traffic Speed'];
                   if (name === 'threatSpike') return [`${value} alerts`, 'Threat Spike'];
                   return [value, name];
                 }}
               />
-              <Area yAxisId="left" type="monotone" dataKey="pps" stroke="#00f0ff" strokeWidth={2} fillOpacity={1} fill="url(#ppsGlow)" />
-              <Area yAxisId="right" type="monotone" dataKey="threatSpike" stroke="#ff0055" strokeWidth={2} fillOpacity={1} fill="url(#alertGlow)" />
+              <Area yAxisId="left" type="monotone" dataKey="pps" stroke="#3b82f6" strokeWidth={2} fillOpacity={1} fill="url(#ppsGlow)" />
+              <Area yAxisId="right" type="monotone" dataKey="threatSpike" stroke="#ef4444" strokeWidth={2} fillOpacity={1} fill="url(#alertGlow)" />
             </AreaChart>
           </ResponsiveContainer>
         ) : (

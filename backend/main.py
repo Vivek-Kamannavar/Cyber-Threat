@@ -28,6 +28,8 @@ from engine.features import calculate_dns_ngram_score
 from backend.config import Config
 from backend.services.groq_service import GroqCopilotService
 from backend.database import get_alert_by_id, save_ai_analysis, get_ai_analysis
+from backend.copilot import ConversationalCopilot
+from ingest.adapter_bridge import AdapterFeedBridge, DedupeWindow, ingest_stream_batch
 
 app = FastAPI(
     title="Cyber Threat Detection System - Data Diode Environment",
@@ -319,6 +321,97 @@ def get_ingest_status():
         "alerts_raised": ingestion_tracker.total_alerts_raised,
         "progress_percent": ingestion_tracker.progress_percent
     }
+
+
+# ======================================================================
+# COLLECTOR STREAM & THREAT-INTEL FEED (INTERNET INGESTION BRIDGE)
+# ======================================================================
+feed_bridge = AdapterFeedBridge()
+stream_dedupe = DedupeWindow()
+
+
+class StreamBatchRequest(BaseModel):
+    events: List[Dict[str, Any]] = []
+    source: Optional[str] = "collector"
+    broadcast: Optional[bool] = True
+
+
+@app.post("/api/ingest/stream")
+async def ingest_collector_stream(req: StreamBatchRequest):
+    """
+    Batch receiver for normalized packet events produced by the diode-side collector.
+    Malformed or duplicated events are rejected without interrupting the detection loop.
+    """
+    alerts_before = len(detector.get_all_alerts())
+    summary = ingest_stream_batch(detector, req.events, bridge=feed_bridge, dedupe=stream_dedupe)
+
+    if req.broadcast:
+        stats = detector.get_stats()
+        await manager.broadcast({
+            "type": "telemetry",
+            "timestamp": time.time(),
+            "data": stats["throughput"],
+            "total_alerts": stats["total_alerts_raised"],
+            "auto_detection_enabled": auto_detection_enabled
+        })
+        for alert in detector.get_all_alerts()[alerts_before:]:
+            await manager.broadcast({"type": "alert", "data": alert})
+
+    return {
+        "status": "accepted",
+        "source": req.source,
+        "accepted": summary["accepted"],
+        "rejected": summary["rejected"],
+        "duplicates": summary["duplicates"],
+        "alerts_raised": summary["alerts_raised"],
+        "intel_matches": summary["intel_matches"],
+    }
+
+
+@app.get("/api/ingest/feed/status")
+def get_feed_status():
+    """Reports the out-of-band adapter feed, its adapters and the local indicator cache."""
+    return feed_bridge.status()
+
+
+@app.post("/api/ingest/feed/refresh")
+async def refresh_feed(host: Optional[str] = Query(None)):
+    """Runs the adapter pipeline(s) out of band and rebuilds the local indicator cache."""
+    return await asyncio.to_thread(feed_bridge.refresh, host)
+
+
+# ======================================================================
+# CONVERSATIONAL AI SECURITY ANALYST (CONTEXT-INJECTED CHAT)
+# ======================================================================
+conversational_copilot: Optional[ConversationalCopilot] = None
+
+
+class CopilotChatRequest(BaseModel):
+    message: str = ""
+    alert_id: Optional[str] = None
+    history: Optional[List[Dict[str, str]]] = None
+
+
+@app.post("/api/copilot/chat")
+async def copilot_chat(req: CopilotChatRequest):
+    """
+    Conversational analyst endpoint. Injects the live telemetry snapshot and the newest
+    alerts into the prompt and always answers with {response, mode, suggestions}.
+    """
+    global conversational_copilot
+    if conversational_copilot is None:
+        conversational_copilot = ConversationalCopilot(ai_copilot)
+
+    stats = detector.get_stats()
+    recent_alerts = detector.get_all_alerts()[-10:]
+    return await asyncio.to_thread(
+        conversational_copilot.respond,
+        req.message,
+        stats.get("throughput"),
+        recent_alerts,
+        req.history,
+        req.alert_id,
+    )
 
 
 # ======================================================================

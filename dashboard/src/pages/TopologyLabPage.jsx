@@ -56,16 +56,16 @@ export default function TopologyLabPage({
   return (
     <div className="space-y-6 animate-fadeIn">
       {/* Page Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-2 border-b border-[#23324d]/60">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-2 border-b border-[#1e293b]/60">
         <div>
           <div className="flex items-center gap-2.5">
-            <span className="p-1.5 rounded-lg bg-sky-500/10 text-sky-400 border border-sky-500/20">
+            <span className="p-1.5 rounded-lg bg-blue-500/10 text-blue-400 border border-blue-500/20">
               <Network className="w-5 h-5" />
             </span>
             <h2 className="text-xl font-bold text-slate-100 tracking-tight">
               Network Topology & Attack Simulation Lab
             </h2>
-            <span className="px-2.5 py-0.5 text-xs font-mono font-medium rounded-full bg-sky-950/60 text-sky-400 border border-sky-800/40">
+            <span className="px-2.5 py-0.5 text-xs font-mono font-medium rounded-full bg-blue-950/60 text-blue-400 border border-blue-800/40">
               Interactive Lab
             </span>
           </div>
@@ -76,7 +76,7 @@ export default function TopologyLabPage({
 
         <button
           onClick={() => onNavigateToTab('monitor')}
-          className="flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-semibold text-sky-400 hover:text-sky-300 bg-sky-950/60 hover:bg-sky-900/60 border border-sky-800/60 rounded-lg transition-colors shadow-sm self-start sm:self-auto"
+          className="flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-semibold text-blue-400 hover:text-blue-300 bg-blue-950/60 hover:bg-blue-900/60 border border-blue-800/60 rounded-lg transition-colors shadow-sm self-start sm:self-auto"
         >
           <Activity className="w-3.5 h-3.5" />
           <span>View Live Alerts ({alerts.length})</span>
@@ -107,8 +107,8 @@ export default function TopologyLabPage({
       </div>
 
       {/* Mathematical Detection Reference Cards */}
-      <div className="bg-[#151f32] border border-[#23324d] rounded-xl p-5 shadow-sm space-y-4">
-        <div className="flex items-center justify-between border-b border-[#23324d] pb-3">
+      <div className="bg-[#0f172a] border border-[#1e293b] rounded-xl p-5 shadow-sm space-y-4">
+        <div className="flex items-center justify-between border-b border-[#1e293b] pb-3">
           <div>
             <h4 className="text-sm font-semibold text-slate-100">
               Diode Detection Engine • Mathematical Detection Methodology
@@ -125,7 +125,7 @@ export default function TopologyLabPage({
             return (
               <div
                 key={idx}
-                className="p-3.5 rounded-lg bg-[#0b1120] border border-[#23324d] hover:border-slate-700 transition-colors space-y-2"
+                className="p-3.5 rounded-lg bg-[#090d16] border border-[#1e293b] hover:border-slate-700 transition-colors space-y-2"
               >
                 <div className="flex items-center gap-2">
                   <div className={`p-1.5 rounded border ${item.color}`}>
@@ -135,7 +135,7 @@ export default function TopologyLabPage({
                     {item.title}
                   </span>
                 </div>
-                <div className="text-[11px] font-mono text-sky-400 bg-slate-900/80 px-2 py-1 rounded border border-[#23324d]">
+                <div className="text-[11px] font-mono text-blue-400 bg-slate-900/80 px-2 py-1 rounded border border-[#1e293b]">
                   {item.formula}
                 </div>
                 <p className="text-xs text-slate-400 leading-relaxed">

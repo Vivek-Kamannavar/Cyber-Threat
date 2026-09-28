@@ -78,7 +78,7 @@ export default function AlertFeed({ alerts, onSelectAlert, onOpenAiCopilot }) {
   };
 
   return (
-    <div className="bg-[#151f32] border border-[#23324d] rounded-xl p-5 mb-6 shadow-sm">
+    <div className="bg-[#0f172a] border border-[#1e293b] rounded-xl p-5 mb-6 shadow-sm">
       {/* Top Header & Actions */}
       <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4 mb-4">
         <div className="flex items-center gap-2.5">
@@ -98,19 +98,19 @@ export default function AlertFeed({ alerts, onSelectAlert, onOpenAiCopilot }) {
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Search IP, host, or alert..."
-              className="w-full bg-[#0b1120] border border-[#23324d] rounded-lg pl-8 pr-3 py-1.5 text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:border-sky-500"
+              className="w-full bg-[#090d16] border border-[#1e293b] rounded-lg pl-8 pr-3 py-1.5 text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:border-blue-500"
             />
           </div>
 
           {/* Severity Filter */}
-          <div className="flex bg-[#0b1120] p-1 rounded-lg border border-[#23324d] text-[11px]">
+          <div className="flex bg-[#090d16] p-1 rounded-lg border border-[#1e293b] text-[11px]">
             {['ALL', 'CRITICAL', 'HIGH', 'MEDIUM'].map(sev => (
               <button
                 key={sev}
                 onClick={() => setSelectedSeverity(sev)}
                 className={`px-2.5 py-1 rounded font-medium ${
                   selectedSeverity === sev 
-                    ? 'bg-slate-800 text-sky-400 shadow-sm' 
+                    ? 'bg-slate-800 text-blue-400 shadow-sm' 
                     : 'text-slate-400 hover:text-slate-200'
                 }`}
               >
@@ -123,7 +123,7 @@ export default function AlertFeed({ alerts, onSelectAlert, onOpenAiCopilot }) {
           <select
             value={selectedClass}
             onChange={(e) => setSelectedClass(e.target.value)}
-            className="bg-[#0b1120] border border-[#23324d] text-xs text-slate-200 rounded-lg px-2.5 py-1.5 focus:outline-none focus:border-sky-500"
+            className="bg-[#090d16] border border-[#1e293b] text-xs text-slate-200 rounded-lg px-2.5 py-1.5 focus:outline-none focus:border-blue-500"
           >
             {threatClasses.map(tc => (
               <option key={tc} value={tc}>{tc === 'ALL' ? 'All Classes' : tc}</option>
@@ -133,14 +133,14 @@ export default function AlertFeed({ alerts, onSelectAlert, onOpenAiCopilot }) {
           {/* Export Buttons */}
           <button
             onClick={exportToCsv}
-            className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 border border-[#23324d]"
+            className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 border border-[#1e293b]"
             title="Export filtered alerts to CSV"
           >
             <Download className="w-3.5 h-3.5" /> CSV
           </button>
           <button
             onClick={exportToJson}
-            className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 border border-[#23324d]"
+            className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 border border-[#1e293b]"
             title="Export filtered alerts to JSON"
           >
             JSON
@@ -150,7 +150,7 @@ export default function AlertFeed({ alerts, onSelectAlert, onOpenAiCopilot }) {
 
       {/* Alert Cards Feed */}
       {filteredAlerts.length === 0 ? (
-        <div className="text-center py-12 bg-[#0b1120] border border-dashed border-[#23324d] rounded-xl">
+        <div className="text-center py-12 bg-[#090d16] border border-dashed border-[#1e293b] rounded-xl">
           <ShieldAlert className="w-8 h-8 text-slate-600 mx-auto mb-2" />
           <p className="text-xs text-slate-400">No threat alerts matching current filter criteria.</p>
         </div>
@@ -167,11 +167,11 @@ export default function AlertFeed({ alerts, onSelectAlert, onOpenAiCopilot }) {
             return (
               <div
                 key={`${alert.alert_id}-${idx}`}
-                className="bg-[#111a2d] border border-[#23324d] hover:border-slate-600 rounded-xl p-3.5 transition-colors flex flex-col md:flex-row md:items-center justify-between gap-3"
+                className="bg-[#0d1424] border border-[#1e293b] hover:border-slate-600 rounded-xl p-3.5 transition-colors flex flex-col md:flex-row md:items-center justify-between gap-3"
               >
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2.5 mb-1.5 flex-wrap">
-                    <span className="text-xs font-mono font-bold text-sky-400">{alert.alert_id}</span>
+                    <span className="text-xs font-mono font-bold text-blue-400">{alert.alert_id}</span>
                     <span className={`text-[10px] font-bold font-mono px-2 py-0.5 rounded uppercase ${
                       sev === 'CRITICAL' ? 'bg-rose-950 text-rose-300 border border-rose-800/60' :
                       sev === 'HIGH' ? 'bg-amber-950 text-amber-300 border border-amber-800/60' :
@@ -179,16 +179,16 @@ export default function AlertFeed({ alerts, onSelectAlert, onOpenAiCopilot }) {
                     }`}>
                       {sev}
                     </span>
-                    <span className="text-xs font-medium text-slate-100 bg-slate-900 px-2 py-0.5 rounded border border-[#23324d]">
+                    <span className="text-xs font-medium text-slate-100 bg-slate-900 px-2 py-0.5 rounded border border-[#1e293b]">
                       {alert.threat_class}
                     </span>
                     <span className="text-[11px] text-slate-400 font-mono ml-auto">{alert.timestamp}</span>
                   </div>
 
                   {/* Flow 5-Tuple Identifier */}
-                  <div className="text-xs font-mono text-slate-300 flex flex-wrap items-center gap-2 mb-2 bg-[#0b1120] px-3 py-1.5 rounded-lg border border-[#23324d]">
-                    <div className="flex items-center gap-1.5 text-sky-300">
-                      <Server className="w-3.5 h-3.5 text-sky-400" />
+                  <div className="text-xs font-mono text-slate-300 flex flex-wrap items-center gap-2 mb-2 bg-[#090d16] px-3 py-1.5 rounded-lg border border-[#1e293b]">
+                    <div className="flex items-center gap-1.5 text-blue-300">
+                      <Server className="w-3.5 h-3.5 text-blue-400" />
                       <span className="font-semibold">{srcLabel}</span>
                       <span className="text-slate-400 text-[11px]">({fid.src_ip}:{fid.src_port})</span>
                     </div>
@@ -214,14 +214,14 @@ export default function AlertFeed({ alerts, onSelectAlert, onOpenAiCopilot }) {
                 <div className="flex items-center gap-2 shrink-0">
                   <button
                     onClick={() => onOpenAiCopilot && onOpenAiCopilot(alert)}
-                    className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg bg-sky-500/10 hover:bg-sky-500/20 text-sky-400 border border-sky-500/30 transition-colors"
+                    className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 border border-blue-500/30 transition-colors"
                   >
                     <Sparkles className="w-3.5 h-3.5" />
                     AI Copilot
                   </button>
                   <button
                     onClick={() => onSelectAlert && onSelectAlert(alert)}
-                    className="flex items-center gap-1 px-3 py-1.5 text-xs font-medium rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 border border-[#23324d] transition-colors"
+                    className="flex items-center gap-1 px-3 py-1.5 text-xs font-medium rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 border border-[#1e293b] transition-colors"
                   >
                     Deep Dive
                     <ChevronRight className="w-3.5 h-3.5" />

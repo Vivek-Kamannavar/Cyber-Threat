@@ -12,7 +12,7 @@ export default function ThreatDetailsModal({ alert, onClose }) {
 
   return (
     <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
-      <div className="bg-cyber-card border border-cyber-border rounded-2xl w-full max-w-3xl max-h-[90vh] flex flex-col overflow-hidden shadow-2xl glow-accent">
+      <div className="bg-cyber-card border border-cyber-border rounded-2xl w-full max-w-3xl max-h-[90vh] flex flex-col overflow-hidden shadow-2xl">
         
         {/* Modal Header */}
         <div className="p-5 border-b border-cyber-border flex items-center justify-between bg-slate-900/60">

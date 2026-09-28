@@ -1,99 +1,82 @@
 import React from 'react';
-import { Activity, ShieldAlert, Zap, Clock } from 'lucide-react';
+import { Activity, ShieldAlert, Gauge } from 'lucide-react';
 
-export default function SummaryCards({ telemetry, totalAlerts, highestConfidence, autoDetectionEnabled }) {
+/**
+ * Clean SOC KPI strip: throughput, active incidents, sliding-window anomaly score.
+ * Deep technical values live in the muted second line (progressive disclosure).
+ */
+export default function SummaryCards({ telemetry, totalAlerts, highestConfidence, autoDetectionEnabled, topAlert }) {
   const pps = telemetry?.pps || 0;
   const bps = telemetry?.bps || 0;
-  const kbps = (bps / 1000).toFixed(1);
+  const kbps = bps / 1000;
+  const anomalyPct = Math.round((highestConfidence || 0) * 100);
+
+  const anomalyTone = anomalyPct >= 90
+    ? { text: 'text-soc-danger', bar: 'bg-soc-danger', label: 'Critical' }
+    : anomalyPct >= 75
+      ? { text: 'text-soc-warning', bar: 'bg-soc-warning', label: 'Elevated' }
+      : anomalyPct > 0
+        ? { text: 'text-soc-primary', bar: 'bg-soc-primary', label: 'Watch' }
+        : { text: 'text-soc-success', bar: 'bg-soc-success', label: 'Nominal' };
+
+  const evidence = topAlert?.supporting_evidence_feature || {};
 
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-      {/* Card 1: Traffic Speed */}
-      <div className="bg-cyber-card border border-cyber-border p-4 rounded-xl relative overflow-hidden transition-all">
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
+      {/* Card 1: Throughput */}
+      <div className="bg-soc-card border border-soc-border rounded-xl p-4" title="Packets and bytes observed inside the active 60s sliding window.">
         <div className="flex items-center justify-between">
-          <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
-            ⚡ Network Traffic Speed
-          </span>
-          <Activity className="w-5 h-5 text-cyan-400" />
+          <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">Ingest Throughput</span>
+          <Activity className="w-4 h-4 text-soc-primary" />
         </div>
-        <div className="mt-3 flex items-baseline gap-2">
-          <span className="text-2xl font-extrabold text-white tracking-tight">{pps}</span>
-          <span className="text-xs text-cyan-400 font-medium">packets / sec</span>
+        <div className="mt-3 flex items-baseline gap-1.5">
+          <span className="text-2xl font-semibold text-slate-100 font-mono tabular-nums">{pps.toLocaleString()}</span>
+          <span className="text-xs text-slate-400 font-mono">pps</span>
         </div>
-        <div className="mt-1 text-xs text-slate-400 font-medium">
-          Bandwidth: <span className="text-slate-200">{kbps} Kbps</span>
-        </div>
-        <div className="absolute bottom-0 left-0 right-0 h-1 bg-cyan-500/30">
-          <div className="h-full bg-cyan-400 glow-accent" style={{ width: `${Math.min(100, (pps / 100) * 100)}%` }} />
-        </div>
+        <p className="mt-1.5 text-[11px] text-slate-400 font-mono">
+          {kbps >= 1000 ? `${(kbps / 1000).toFixed(2)} Mbps` : `${kbps.toFixed(1)} Kbps`} · one-way diode RX
+        </p>
       </div>
 
-      {/* Card 2: Total Threats */}
-      <div className="bg-cyber-card border border-cyber-border p-4 rounded-xl relative overflow-hidden transition-all">
+      {/* Card 2: Active incidents */}
+      <div className="bg-soc-card border border-soc-border rounded-xl p-4" title="Alerts raised in this session after the 3s per-entity cooldown.">
         <div className="flex items-center justify-between">
-          <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
-            🛡️ Threat Alerts
+          <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">Active Incidents</span>
+          <ShieldAlert className={`w-4 h-4 ${totalAlerts > 0 ? 'text-soc-danger' : 'text-soc-success'}`} />
+        </div>
+        <div className="mt-3 flex items-baseline gap-1.5">
+          <span className={`text-2xl font-semibold font-mono tabular-nums ${totalAlerts > 0 ? 'text-soc-danger' : 'text-slate-100'}`}>
+            {totalAlerts}
           </span>
-          <ShieldAlert className="w-5 h-5 text-red-400" />
+          <span className="text-xs text-slate-400 font-mono">flagged</span>
         </div>
-        <div className="mt-3 flex items-baseline gap-2">
-          <span className="text-2xl font-extrabold text-red-400 tracking-tight">{totalAlerts}</span>
-          <span className="text-xs text-red-400/80 font-medium">Flagged</span>
-        </div>
-        <div className="mt-1 text-xs text-slate-400 font-medium">
-          Detection:{' '}
-          {autoDetectionEnabled === false ? (
-            <span className="text-amber-400 font-semibold">⏸️ Auto-Detect Paused</span>
-          ) : totalAlerts > 0 ? (
-            <span className="text-red-400 font-semibold">⚠️ Threats Detected</span>
-          ) : (
-            <span className="text-emerald-400 font-semibold">✅ All Clear</span>
-          )}
-        </div>
-        <div className="absolute bottom-0 left-0 right-0 h-1 bg-red-500/30">
-          <div className="h-full bg-red-500 glow-red" style={{ width: `${Math.min(100, totalAlerts * 5)}%` }} />
-        </div>
+        <p className="mt-1.5 text-[11px] text-slate-400">
+          Detection engine{' '}
+          <span className={autoDetectionEnabled === false ? 'text-soc-warning' : 'text-soc-success'}>
+            {autoDetectionEnabled === false ? 'paused' : 'active'}
+          </span>
+          {' · '}
+          {totalAlerts === 0 ? 'no anomalies in window' : 'triage required'}
+        </p>
       </div>
 
-      {/* Card 3: Max Confidence */}
-      <div className="bg-cyber-card border border-cyber-border p-4 rounded-xl relative overflow-hidden transition-all">
+      {/* Card 3: Window anomaly score */}
+      <div className="bg-soc-card border border-soc-border rounded-xl p-4" title="Highest confidence score produced by the tier-1 heuristics and isolation forest in the current window.">
         <div className="flex items-center justify-between">
-          <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
-            🎯 Detection Accuracy
-          </span>
-          <Zap className="w-5 h-5 text-amber-400" />
+          <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">Window Anomaly Score</span>
+          <Gauge className={`w-4 h-4 ${anomalyTone.text}`} />
         </div>
-        <div className="mt-3 flex items-baseline gap-2">
-          <span className="text-2xl font-extrabold text-amber-400 tracking-tight">
-            {highestConfidence ? `${(highestConfidence * 100).toFixed(0)}%` : '0%'}
-          </span>
-          <span className="text-xs text-amber-400/80 font-medium">Certainty</span>
+        <div className="mt-3 flex items-baseline gap-1.5">
+          <span className={`text-2xl font-semibold font-mono tabular-nums ${anomalyTone.text}`}>{anomalyPct}%</span>
+          <span className="text-xs text-slate-400 font-mono">{anomalyTone.label}</span>
         </div>
-        <div className="mt-1 text-xs text-slate-400 font-medium">
-          Detection Method: <span className="text-slate-200">AI Pattern Matcher</span>
-        </div>
-        <div className="absolute bottom-0 left-0 right-0 h-1 bg-amber-500/30">
-          <div className="h-full bg-amber-400" style={{ width: `${(highestConfidence || 0) * 100}%` }} />
-        </div>
-      </div>
-
-      {/* Card 4: Pipeline Latency */}
-      <div className="bg-cyber-card border border-cyber-border p-4 rounded-xl relative overflow-hidden transition-all">
-        <div className="flex items-center justify-between">
-          <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
-            ⏱️ Reaction Time
-          </span>
-          <Clock className="w-5 h-5 text-emerald-400" />
-        </div>
-        <div className="mt-3 flex items-baseline gap-2">
-          <span className="text-2xl font-extrabold text-emerald-400 tracking-tight">&lt; 12</span>
-          <span className="text-xs text-emerald-400/80 font-medium">ms (Instant)</span>
-        </div>
-        <div className="mt-1 text-xs text-slate-400 font-medium">
-          Evaluation: <span className="text-slate-200">Real-time (Immediate)</span>
-        </div>
-        <div className="absolute bottom-0 left-0 right-0 h-1 bg-emerald-500/30">
-          <div className="h-full bg-emerald-400 glow-green" style={{ width: '92%' }} />
+        <p className="mt-1.5 text-[11px] text-slate-400 truncate" title={evidence.technical_reason || undefined}>
+          {topAlert
+            ? `${topAlert.threat_class} · ${evidence.technical_reason || evidence.reason || 'behavioural outlier'}`
+            : 'baseline stable — no scoring deviation'}
+        </p>
+        <div className="mt-2 h-0.5 w-full rounded bg-soc-border overflow-hidden">
+          <div className={`h-full ${anomalyTone.bar}`} style={{ width: `${anomalyPct}%` }} />
         </div>
       </div>
     </div>
