@@ -42,44 +42,45 @@ def wait_for_health(client, timeout=30):
     return False
 
 
-with httpx.Client() as client:
-    check("server reachable (/api/health)", wait_for_health(client))
+def run_smoke():
+    with httpx.Client() as client:
+        check("server reachable (/api/health)", wait_for_health(client))
 
-    health = client.get(f"{BASE}/api/health", timeout=10).json()
-    check("health payload", health.get("status") == "healthy", health.get("diode_mode"))
+        health = client.get(f"{BASE}/api/health", timeout=10).json()
+        check("health payload", health.get("status") == "healthy", health.get("diode_mode"))
 
-    stats = client.get(f"{BASE}/api/stats", timeout=10).json()
-    check("stats has throughput + window", "throughput" in stats and "window_size_seconds" in stats,
-          f"pps={stats['throughput']['pps']} alerts={stats['total_alerts_raised']}")
+        stats = client.get(f"{BASE}/api/stats", timeout=10).json()
+        check("stats has throughput + window", "throughput" in stats and "window_size_seconds" in stats,
+              f"pps={stats['throughput']['pps']} alerts={stats['total_alerts_raised']}")
 
-    feed = client.get(f"{BASE}/api/ingest/feed/status", timeout=30).json()
-    check("feed status reports the allowlisted adapter",
-          feed.get("available") is True and feed.get("indicator_count", 0) > 0,
-          f"hosts={feed.get('feed_hosts')} indicators={feed.get('indicator_count')} severity={feed.get('by_severity')}")
+        feed = client.get(f"{BASE}/api/ingest/feed/status", timeout=30).json()
+        check("feed status reports the allowlisted adapter",
+              feed.get("available") is True and feed.get("indicator_count", 0) > 0,
+              f"hosts={feed.get('feed_hosts')} indicators={feed.get('indicator_count')} severity={feed.get('by_severity')}")
 
-    chat = client.post(f"{BASE}/api/copilot/chat", json={"message": "Summarize threat posture"}, timeout=60).json()
-    check("copilot chat contract",
-          set(chat) >= {"response", "mode", "suggestions"} and bool(chat.get("response")),
-          f"mode={chat.get('mode')} suggestions={len(chat.get('suggestions') or [])}")
+        chat = client.post(f"{BASE}/api/copilot/chat", json={"message": "Summarize threat posture"}, timeout=60).json()
+        check("copilot chat contract",
+              set(chat) >= {"response", "mode", "suggestions"} and bool(chat.get("response")),
+              f"mode={chat.get('mode')} suggestions={len(chat.get('suggestions') or [])}")
 
-    sim = client.post(f"{BASE}/api/simulate/c2_beacon", timeout=30).json()
-    check("attack scenario injected", sim.get("alerts_raised", 0) >= 1,
-          f"flows={sim.get('flows_processed')} alerts={sim.get('alerts_raised')}")
+        sim = client.post(f"{BASE}/api/simulate/c2_beacon", timeout=30).json()
+        check("attack scenario injected", sim.get("alerts_raised", 0) >= 1,
+              f"flows={sim.get('flows_processed')} alerts={sim.get('alerts_raised')}")
 
-    stream = client.post(f"{BASE}/api/ingest/stream", json={
-        "source": "smoke",
-        "events": [
-            {"timestamp": time.time(), "src_ip": "192.168.10.77", "src_port": 51000,
-             "dst_ip": "91.215.102.14", "dst_port": 8443, "bytes": 4096, "packet_count": 4, "entropy": 7.1},
-            {"timestamp": time.time(), "src_ip": "not-an-ip", "dst_ip": "91.215.102.14"},
-        ],
-    }, timeout=30).json()
-    check("collector batch accepted valid / rejected junk",
-          stream.get("accepted") == 1 and stream.get("rejected") == 1,
-          f"accepted={stream.get('accepted')} rejected={stream.get('rejected')} dupes={stream.get('duplicates')} alerts={stream.get('alerts_raised')}")
+        stream = client.post(f"{BASE}/api/ingest/stream", json={
+            "source": "smoke",
+            "events": [
+                {"timestamp": time.time(), "src_ip": "192.168.10.77", "src_port": 51000,
+                 "dst_ip": "91.215.102.14", "dst_port": 8443, "bytes": 4096, "packet_count": 4, "entropy": 7.1},
+                {"timestamp": time.time(), "src_ip": "not-an-ip", "dst_ip": "91.215.102.14"},
+            ],
+        }, timeout=30).json()
+        check("collector batch accepted valid / rejected junk",
+              stream.get("accepted") == 1 and stream.get("rejected") == 1,
+              f"accepted={stream.get('accepted')} rejected={stream.get('rejected')} dupes={stream.get('duplicates')} alerts={stream.get('alerts_raised')}")
 
-    alerts = client.get(f"{BASE}/api/alerts", timeout=10).json()
-    check("alerts logged", alerts.get("count", 0) >= 1, f"count={alerts.get('count')}")
+        alerts = client.get(f"{BASE}/api/alerts", timeout=10).json()
+        check("alerts logged", alerts.get("count", 0) >= 1, f"count={alerts.get('count')}")
 
 
 async def ws_probe():
@@ -98,12 +99,19 @@ async def ws_probe():
     return seen
 
 
-try:
-    seen = asyncio.run(ws_probe())
-    check("websocket streams (snapshot + live telemetry)",
-          seen[0] == "snapshot" and "telemetry" in seen, f"types={seen}")
-except Exception as exc:  # noqa: BLE001
-    check("websocket streams", False, repr(exc))
+def main():
+    run_smoke()
+    try:
+        seen = asyncio.run(ws_probe())
+        check("websocket streams (snapshot + live telemetry)",
+              seen[0] == "snapshot" and "telemetry" in seen, f"types={seen}")
+    except Exception as exc:  # noqa: BLE001
+        check("websocket streams", False, repr(exc))
 
-print("\nRESULT:", "ALL PASS" if not failures else f"{len(failures)} FAILED: {failures}")
-sys.exit(1 if failures else 0)
+    print("\nRESULT:", "ALL PASS" if not failures else f"{len(failures)} FAILED: {failures}")
+    sys.exit(1 if failures else 0)
+
+
+if __name__ == "__main__":
+    main()
+
