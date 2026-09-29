@@ -34,19 +34,18 @@ export default function App() {
   const [isExecutiveView, setIsExecutiveView] = useState(false);
   const [autoDetectionEnabled, setAutoDetectionEnabled] = useState(true);
   const [showGuideModal, setShowGuideModal] = useState(false);
-  const [toasts, setToasts] = useState([]);
-
   const addToast = (toast) => {
-    const id = `toast-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`;
+    const id = `toast-${Date.now()}`;
     const newToast = {
       id,
       timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
       ...toast
     };
-    setToasts((prev) => [newToast, ...prev.slice(0, 3)]);
+    // Keep strictly 1 toast at a time so screen is never cluttered
+    setToasts([newToast]);
     setTimeout(() => {
       setToasts((prev) => prev.filter((t) => t.id !== id));
-    }, 6000);
+    }, 4000);
   };
 
   const handleDismissToast = (id) => {
@@ -135,11 +134,6 @@ export default function App() {
     // Listen for global alert events (from file upload / simulation / scanner)
     const unsubAlert = eventBus.on('alert', (newAlert) => {
       setAlerts((prev) => [newAlert, ...prev].slice(0, 50));
-      addToast({
-        type: 'threat',
-        title: `Threat Alert: ${newAlert.threat_class || 'Incident'}`,
-        message: `${newAlert.supporting_evidence_feature?.reason || 'Anomalous pattern identified.'} (${newAlert.flow_identifier?.src_ip} ➔ ${newAlert.flow_identifier?.dst_ip})`
-      });
     });
 
     const unsubFeed = eventBus.on('feed_update', (data) => {
@@ -147,7 +141,7 @@ export default function App() {
       addToast({
         type: 'feed',
         title: 'Threat Intel Synchronized',
-        message: `+${data?.fresh_count || 0} fresh indicators indexed (${data?.total_indicators || 117} total). Zero-latency memory cache ready.`
+        message: `+${data?.fresh_count || 0} fresh indicators indexed (${data?.total_indicators || 117} total).`
       });
     });
 
@@ -219,11 +213,6 @@ export default function App() {
               title: `Threat Alert: ${msg.data.threat_class}`,
               detail: `${msg.data.flow_identifier?.src_ip} ➔ ${msg.data.flow_identifier?.dst_ip} (${Math.round((msg.data.confidence_score || 0.95) * 100)}% conf)`
             });
-            addToast({
-              type: 'threat',
-              title: `Threat Detected: ${msg.data.threat_class || 'Anomaly'}`,
-              message: `${msg.data.supporting_evidence_feature?.reason || 'Anomalous flow pattern identified.'} (${msg.data.flow_identifier?.src_ip} ➔ ${msg.data.flow_identifier?.dst_ip})`
-            });
           } else if (msg.type === 'feed_update') {
             eventBus.emit('feed_update', msg.data);
             eventBus.emit('audit_log', {
@@ -248,8 +237,13 @@ export default function App() {
 
   const handleSimulate = async (threatType) => {
     try {
+      addToast({
+        type: 'threat',
+        title: 'Scenario Injected',
+        message: `Simulating controlled ${threatType.replace('_', ' ')} vector across diode.`
+      });
       await simulateThreat(threatType, (newAlert) => {
-        setAlerts((prev) => [newAlert, ...prev]);
+        setAlerts((prev) => [newAlert, ...prev].slice(0, 50));
       });
     } catch (e) {
       console.error("Failed to run simulation:", e);
@@ -261,6 +255,13 @@ export default function App() {
       const data = await toggleAutoDetection();
       if (data && data.auto_detection_enabled !== undefined) {
         setAutoDetectionEnabled(data.auto_detection_enabled);
+        addToast({
+          type: data.auto_detection_enabled ? 'success' : 'warn',
+          title: data.auto_detection_enabled ? 'Detection Active' : 'Detection Paused',
+          message: data.auto_detection_enabled
+            ? 'Threat detection engine is actively analyzing incoming flows.'
+            : 'Threat detection engine paused. Traffic recorded for throughput only.'
+        });
       }
     } catch (e) {
       console.error("Failed to toggle auto-detection:", e);
