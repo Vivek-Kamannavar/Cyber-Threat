@@ -9,6 +9,7 @@ import LiveMonitorPage from './pages/LiveMonitorPage';
 import IngestionHubPage from './pages/IngestionHubPage';
 import TopologyLabPage from './pages/TopologyLabPage';
 import ForensicScannerPage from './pages/ForensicScannerPage';
+import ToastContainer from './components/ToastContainer';
 import { 
   initializeSocketStream, 
   simulateThreat, 
@@ -33,6 +34,25 @@ export default function App() {
   const [isExecutiveView, setIsExecutiveView] = useState(false);
   const [autoDetectionEnabled, setAutoDetectionEnabled] = useState(true);
   const [showGuideModal, setShowGuideModal] = useState(false);
+  const [toasts, setToasts] = useState([]);
+
+  const addToast = (toast) => {
+    const id = `toast-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`;
+    const newToast = {
+      id,
+      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
+      ...toast
+    };
+    setToasts((prev) => [newToast, ...prev.slice(0, 3)]);
+    setTimeout(() => {
+      setToasts((prev) => prev.filter((t) => t.id !== id));
+    }, 6000);
+  };
+
+  const handleDismissToast = (id) => {
+    setToasts((prev) => prev.filter((t) => t.id !== id));
+  };
+
   const getInitialRemainingSeconds = () => {
     try {
       const stored = localStorage.getItem('threat_intel_next_sync_target');
@@ -114,11 +134,21 @@ export default function App() {
   useEffect(() => {
     // Listen for global alert events (from file upload / simulation / scanner)
     const unsubAlert = eventBus.on('alert', (newAlert) => {
-      setAlerts((prev) => [newAlert, ...prev]);
+      setAlerts((prev) => [newAlert, ...prev].slice(0, 50));
+      addToast({
+        type: 'threat',
+        title: `Threat Alert: ${newAlert.threat_class || 'Incident'}`,
+        message: `${newAlert.supporting_evidence_feature?.reason || 'Anomalous pattern identified.'} (${newAlert.flow_identifier?.src_ip} ➔ ${newAlert.flow_identifier?.dst_ip})`
+      });
     });
 
     const unsubFeed = eventBus.on('feed_update', (data) => {
       handleResetSyncTimer(data?.target_sync_timestamp_ms);
+      addToast({
+        type: 'feed',
+        title: 'Threat Intel Synchronized',
+        message: `+${data?.fresh_count || 0} fresh indicators indexed (${data?.total_indicators || 117} total). Zero-latency memory cache ready.`
+      });
     });
 
     const cleanup = initializeSocketStream({
@@ -130,7 +160,7 @@ export default function App() {
         try {
           if (msg.type === 'snapshot') {
             if (msg.recent_alerts) {
-              setAlerts(msg.recent_alerts);
+              setAlerts(msg.recent_alerts.slice(0, 50));
               prevAlertsRef.current = msg.total_alerts || msg.recent_alerts.length;
             }
             if (msg.auto_detection_enabled !== undefined) {
@@ -144,6 +174,11 @@ export default function App() {
             setAlerts([]);
             prevAlertsRef.current = 0;
             setHistoryData((prev) => prev.map(item => ({ ...item, threatSpike: 0, alerts: 0 })));
+            addToast({
+              type: 'success',
+              title: 'Incident Queue Cleared',
+              message: 'All historical alerts in the active window have been reset.'
+            });
           } else if (msg.type === 'telemetry') {
             setTelemetry(msg.data || { pps: 0, bps: 0 });
             if (msg.auto_detection_enabled !== undefined) {
@@ -176,13 +211,18 @@ export default function App() {
             });
 
           } else if (msg.type === 'alert') {
-            setAlerts((prev) => [msg.data, ...prev]);
+            setAlerts((prev) => [msg.data, ...prev].slice(0, 50));
             eventBus.emit('audit_log', {
               id: msg.data.alert_id,
               timestamp: msg.data.timestamp || new Date().toISOString(),
               type: 'threat',
               title: `Threat Alert: ${msg.data.threat_class}`,
               detail: `${msg.data.flow_identifier?.src_ip} ➔ ${msg.data.flow_identifier?.dst_ip} (${Math.round((msg.data.confidence_score || 0.95) * 100)}% conf)`
+            });
+            addToast({
+              type: 'threat',
+              title: `Threat Detected: ${msg.data.threat_class || 'Anomaly'}`,
+              message: `${msg.data.supporting_evidence_feature?.reason || 'Anomalous flow pattern identified.'} (${msg.data.flow_identifier?.src_ip} ➔ ${msg.data.flow_identifier?.dst_ip})`
             });
           } else if (msg.type === 'feed_update') {
             eventBus.emit('feed_update', msg.data);
@@ -256,7 +296,10 @@ export default function App() {
   const hasCriticalThreat = alerts.some(a => (a.confidence_score || 0) >= 0.90);
 
   return (
-    <div className="min-h-screen flex flex-col bg-[#090d16] text-slate-100">
+    <div className="min-h-screen flex flex-col bg-[#090d16] text-slate-100 relative">
+      {/* Real-time Human-Readable Toast Alerts */}
+      <ToastContainer toasts={toasts} onDismiss={handleDismissToast} />
+
       <Header
         isConnected={isConnected}
         connectionMode={connectionMode}

@@ -247,15 +247,9 @@ async def background_flow_simulation():
                             "data": alert
                         })
 
-            # Generate continuous normal flow
+            # Generate continuous normal background flow for throughput telemetry
             flow = generator.generate_benign_flow()
-            alerts = []
-            
-            if auto_detection_enabled:
-                alerts = detector.process_flow(flow)
-            else:
-                # Still record traffic in sliding window for throughput stats, without evaluating threat rules
-                detector.window_manager.add_flow(flow)
+            detector.window_manager.add_flow(flow)
 
             # Broadcast live telemetry
             stats = detector.get_stats()
@@ -263,16 +257,9 @@ async def background_flow_simulation():
                 "type": "telemetry",
                 "timestamp": time.time(),
                 "data": stats["throughput"],
-                "total_alerts": stats["total_alerts_raised"],
+                "total_alerts": len(detector.get_all_alerts()),
                 "auto_detection_enabled": auto_detection_enabled
             })
-
-            # Broadcast raised alerts if any
-            for alert in alerts:
-                await manager.broadcast({
-                    "type": "alert",
-                    "data": alert
-                })
 
             await asyncio.sleep(0.5)
         except Exception as e:

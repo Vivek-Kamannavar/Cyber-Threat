@@ -82,7 +82,7 @@ class ThreatDetector:
 
         # 3. Unsupervised ML Isolation Forest check
         is_ml_anomaly, ml_score = self.ml_detector.predict_anomaly(flow)
-        if is_ml_anomaly and not alerts and self._should_raise_alert("ML_Anomaly", src_ip, cooldown):
+        if is_ml_anomaly and not alerts and ml_score >= 0.80 and self._should_raise_alert("ML_Anomaly", src_ip, cooldown):
             ml_alert = {
                 "threat_class": "Unsupervised Volumetric Anomaly",
                 "confidence_score": ml_score,
@@ -98,13 +98,16 @@ class ThreatDetector:
             }
             alerts.append(self._format_alert(ml_alert))
 
-        # 4. Record to in-memory history and persist to SQLite
+        # 4. Record to in-memory history and persist to SQLite (bounded to latest 100 active alerts)
         for alert in alerts:
             self.alerts_history.append(alert)
             try:
                 save_alert(alert)
             except Exception as e:
                 print(f"Warning: Failed to persist alert {alert.get('alert_id')} to database: {e}")
+
+        if len(self.alerts_history) > 100:
+            self.alerts_history = self.alerts_history[-100:]
 
         return alerts
 
