@@ -284,6 +284,8 @@ async def background_flow_simulation():
 async def startup_event():
     # Start background flow processing task
     asyncio.create_task(background_flow_simulation())
+    # Start periodic 5-minute threat intelligence sync task
+    asyncio.create_task(periodic_threat_intel_refresh_task())
 
 
 @app.get("/api/health")
@@ -493,6 +495,56 @@ def get_ingest_status():
 feed_bridge = AdapterFeedBridge()
 stream_dedupe = DedupeWindow()
 
+last_feed_sync_meta = {
+    "last_sync_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+    "fresh_count": 0,
+    "total_indicators": len(feed_bridge.indicators()),
+    "interval_seconds": 300,
+    "status": "idle"
+}
+
+
+async def periodic_threat_intel_refresh_task():
+    """Periodically fetches fresh threat intelligence out-of-band every 5 minutes (300s)."""
+    await asyncio.sleep(3.0)
+    while True:
+        try:
+            last_feed_sync_meta["status"] = "refreshing"
+            result = await asyncio.to_thread(feed_bridge.refresh)
+
+            fresh_count = 0
+            for s in result.get("sources", []):
+                stages = s.get("stages") or {}
+                fresh_count += stages.get("fresh", 0)
+
+            total_indicators = result.get("indicators", len(feed_bridge.indicators()))
+            now_iso = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
+
+            last_feed_sync_meta["last_sync_at"] = now_iso
+            last_feed_sync_meta["fresh_count"] = fresh_count
+            last_feed_sync_meta["total_indicators"] = total_indicators
+            last_feed_sync_meta["status"] = "synced"
+
+            # Broadcast live feed update to all connected dashboard clients
+            await manager.broadcast({
+                "type": "feed_update",
+                "timestamp": time.time(),
+                "data": {
+                    "status": "refreshed",
+                    "fresh_count": fresh_count,
+                    "total_indicators": total_indicators,
+                    "last_sync_at": now_iso,
+                    "interval_seconds": 300,
+                    "feed_status": feed_bridge.status()
+                }
+            })
+            print(f"[Threat Intel Sync] 5-min sync complete at {now_iso}: +{fresh_count} fresh, total: {total_indicators}")
+        except Exception as e:
+            last_feed_sync_meta["status"] = "error"
+            print(f"[Threat Intel Sync] Background sync error: {e}")
+
+        await asyncio.sleep(300)
+
 
 class StreamBatchRequest(BaseModel):
     events: List[Dict[str, Any]] = []
@@ -534,14 +586,40 @@ async def ingest_collector_stream(req: StreamBatchRequest):
 
 @app.get("/api/ingest/feed/status")
 def get_feed_status():
-    """Reports the out-of-band adapter feed, its adapters and the local indicator cache."""
-    return feed_bridge.status()
+    """Reports the out-of-band adapter feed, its adapters, and the local indicator cache with live sync metadata."""
+    status = feed_bridge.status()
+    status["sync_metadata"] = last_feed_sync_meta
+    return status
 
 
 @app.post("/api/ingest/feed/refresh")
 async def refresh_feed(host: Optional[str] = Query(None)):
     """Runs the adapter pipeline(s) out of band and rebuilds the local indicator cache."""
-    return await asyncio.to_thread(feed_bridge.refresh, host)
+    result = await asyncio.to_thread(feed_bridge.refresh, host)
+    fresh_count = 0
+    for s in result.get("sources", []):
+        stages = s.get("stages") or {}
+        fresh_count += stages.get("fresh", 0)
+
+    now_iso = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
+    last_feed_sync_meta["last_sync_at"] = now_iso
+    last_feed_sync_meta["fresh_count"] = fresh_count
+    last_feed_sync_meta["total_indicators"] = result.get("indicators", len(feed_bridge.indicators()))
+    last_feed_sync_meta["status"] = "synced"
+
+    await manager.broadcast({
+        "type": "feed_update",
+        "timestamp": time.time(),
+        "data": {
+            "status": "refreshed",
+            "fresh_count": fresh_count,
+            "total_indicators": last_feed_sync_meta["total_indicators"],
+            "last_sync_at": now_iso,
+            "interval_seconds": 300,
+            "feed_status": feed_bridge.status()
+        }
+    })
+    return result
 
 
 # ======================================================================

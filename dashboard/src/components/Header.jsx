@@ -88,6 +88,19 @@ export default function Header({
             {statusLabel}
           </span>
 
+          {/* Threat Intel Auto-Sync Pill */}
+          <button
+            onClick={() => onSelectTab && onSelectTab('ingest')}
+            className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg border border-cyan-500/30 bg-cyan-500/10 text-cyan-300 text-[11px] font-mono font-medium hover:bg-cyan-500/20 transition-colors"
+            title="Out-of-band threat-intel adapter auto-sync running on 5-minute schedule. Click to view Data Ingestion Hub."
+          >
+            <span className="relative flex h-2 w-2">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-cyan-400 opacity-75" />
+              <span className="relative inline-flex rounded-full h-2 w-2 bg-cyan-400" />
+            </span>
+            Intel: 5m Auto-Sync
+          </button>
+
           {/* Stream source selector */}
           <label className="flex items-center gap-1.5 bg-soc-bg border border-soc-border rounded-lg pl-2.5 pr-1 py-1">
             <span className="text-[11px] text-slate-400 font-medium">Stream</span>

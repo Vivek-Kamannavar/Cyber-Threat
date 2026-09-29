@@ -126,6 +126,22 @@ export default function App() {
 
           } else if (msg.type === 'alert') {
             setAlerts((prev) => [msg.data, ...prev]);
+            eventBus.emit('audit_log', {
+              id: msg.data.alert_id,
+              timestamp: msg.data.timestamp || new Date().toISOString(),
+              type: 'threat',
+              title: `Threat Alert: ${msg.data.threat_class}`,
+              detail: `${msg.data.flow_identifier?.src_ip} ➔ ${msg.data.flow_identifier?.dst_ip} (${Math.round((msg.data.confidence_score || 0.95) * 100)}% conf)`
+            });
+          } else if (msg.type === 'feed_update') {
+            eventBus.emit('feed_update', msg.data);
+            eventBus.emit('audit_log', {
+              id: `SYNC-${Date.now()}`,
+              timestamp: new Date().toISOString(),
+              type: 'feed',
+              title: 'Threat Intel 5-Min Auto-Sync',
+              detail: `+${msg.data?.fresh_count || 0} fresh indicators extracted (${msg.data?.total_indicators || 0} cached)`
+            });
           }
         } catch (e) {
           console.error("Error handling stream message:", e);
