@@ -2,7 +2,7 @@ import React from 'react';
 import SummaryCards from '../components/SummaryCards';
 import ThroughputChart from '../components/ThroughputChart';
 import AlertFeed from '../components/AlertFeed';
-import { Activity, ArrowRight } from 'lucide-react';
+import { Activity, ArrowRight, Zap, ShieldCheck } from 'lucide-react';
 
 export default function LiveMonitorPage({
   telemetry,
@@ -54,6 +54,32 @@ export default function LiveMonitorPage({
             className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-slate-300 hover:text-blue-300 bg-[#0f172a] hover:bg-slate-800 border border-[#1e293b] rounded-lg transition-colors"
           >
             <span>Target Scanner</span>
+            <ArrowRight className="w-3.5 h-3.5" />
+          </button>
+        </div>
+      </div>
+
+      {/* Live Threat Intel & Background Ingestion Status Banner */}
+      <div className="bg-[#0b1120] border border-[#1e293b] rounded-xl p-3 px-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs shadow-sm">
+        <div className="flex items-center gap-2.5 flex-wrap">
+          <span className="relative flex h-2.5 w-2.5">
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-cyan-400 opacity-75" />
+            <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-cyan-400" />
+          </span>
+          <span className="font-semibold text-slate-200">
+            Threat Intelligence Ingestion Pipeline:
+          </span>
+          <span className="text-slate-400">
+            117 active indicators in memory · 5-minute background auto-sync active
+          </span>
+        </div>
+
+        <div className="flex items-center gap-3 shrink-0">
+          <button
+            onClick={() => onNavigateToTab('ingest')}
+            className="flex items-center gap-1 text-cyan-400 hover:text-cyan-300 font-medium text-xs transition-colors"
+          >
+            <span>Inspect Live Ingestion Deck</span>
             <ArrowRight className="w-3.5 h-3.5" />
           </button>
         </div>
