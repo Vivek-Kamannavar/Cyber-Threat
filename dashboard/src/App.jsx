@@ -34,6 +34,8 @@ export default function App() {
   const [isExecutiveView, setIsExecutiveView] = useState(false);
   const [autoDetectionEnabled, setAutoDetectionEnabled] = useState(true);
   const [showGuideModal, setShowGuideModal] = useState(false);
+  const [toasts, setToasts] = useState([]);
+
   const addToast = (toast) => {
     const id = `toast-${Date.now()}`;
     const newToast = {
