@@ -33,6 +33,15 @@ export default function App() {
   const [isExecutiveView, setIsExecutiveView] = useState(false);
   const [autoDetectionEnabled, setAutoDetectionEnabled] = useState(true);
   const [showGuideModal, setShowGuideModal] = useState(false);
+  const [secondsUntilSync, setSecondsUntilSync] = useState(300);
+
+  // 5-minute periodic auto-sync countdown (300s)
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setSecondsUntilSync((prev) => (prev <= 1 ? 300 : prev - 1));
+    }, 1000);
+    return () => clearInterval(timer);
+  }, []);
 
   // Hash-based routing for 3 distinct pages
   const getInitialTab = () => {
@@ -68,6 +77,10 @@ export default function App() {
     // Listen for global alert events (from file upload / simulation / scanner)
     const unsubAlert = eventBus.on('alert', (newAlert) => {
       setAlerts((prev) => [newAlert, ...prev]);
+    });
+
+    const unsubFeed = eventBus.on('feed_update', () => {
+      setSecondsUntilSync(300);
     });
 
     const cleanup = initializeSocketStream({
@@ -221,6 +234,7 @@ export default function App() {
         onToggleViewMode={() => setIsExecutiveView(!isExecutiveView)}
         currentTab={activeTab}
         onSelectTab={handleSelectTab}
+        secondsUntilSync={secondsUntilSync}
       />
 
       <main className="flex-1 max-w-7xl w-full mx-auto p-4 md:p-6">
@@ -236,6 +250,7 @@ export default function App() {
             onSelectAlert={(alert) => setSelectedAlert(alert)}
             onOpenAiCopilot={handleOpenCopilot}
             onNavigateToTab={handleSelectTab}
+            secondsUntilSync={secondsUntilSync}
           />
         )}
 
@@ -255,6 +270,8 @@ export default function App() {
             onOpenUpload={() => setIsUploadModalOpen(true)}
             onSimulate={handleSimulate}
             onNavigateToTab={handleSelectTab}
+            secondsUntilSync={secondsUntilSync}
+            onResetSyncTimer={() => setSecondsUntilSync(300)}
           />
         )}
 

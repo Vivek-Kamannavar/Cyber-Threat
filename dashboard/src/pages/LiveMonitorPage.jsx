@@ -13,11 +13,16 @@ export default function LiveMonitorPage({
   isExecutiveView,
   onSelectAlert,
   onOpenAiCopilot,
-  onNavigateToTab
+  onNavigateToTab,
+  secondsUntilSync = 300
 }) {
   const topAlert = alerts.length > 0
     ? alerts.reduce((best, alert) => ((alert.confidence_score || 0) > (best.confidence_score || 0) ? alert : best), alerts[0])
     : null;
+
+  const mins = Math.floor(secondsUntilSync / 60);
+  const secs = (secondsUntilSync % 60).toString().padStart(2, '0');
+  const syncProgressPct = Math.round(((300 - secondsUntilSync) / 300) * 100);
 
   return (
     <div className="space-y-6 animate-fadeIn">
@@ -59,9 +64,9 @@ export default function LiveMonitorPage({
         </div>
       </div>
 
-      {/* Live Threat Intel & Background Ingestion Status Banner */}
+      {/* Live Threat Intel & Background Ingestion Status Banner with Live Countdown Timer */}
       <div className="bg-[#0b1120] border border-[#1e293b] rounded-xl p-3 px-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs shadow-sm">
-        <div className="flex items-center gap-2.5 flex-wrap">
+        <div className="flex items-center gap-3 flex-wrap">
           <span className="relative flex h-2.5 w-2.5">
             <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-cyan-400 opacity-75" />
             <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-cyan-400" />
@@ -70,16 +75,27 @@ export default function LiveMonitorPage({
             Threat Intelligence Ingestion Pipeline:
           </span>
           <span className="text-slate-400">
-            117 active indicators in memory · 5-minute background auto-sync active
+            117 active indicators · Next background sync in{' '}
+            <strong className="font-mono font-bold text-cyan-300 bg-cyan-950/90 px-2 py-0.5 rounded border border-cyan-700/50">
+              {mins}:{secs}
+            </strong>
           </span>
         </div>
 
         <div className="flex items-center gap-3 shrink-0">
+          <div className="w-20 hidden md:block">
+            <div className="h-1.5 w-full bg-slate-800 rounded-full overflow-hidden">
+              <div
+                className="h-full bg-cyan-400 transition-all duration-1000"
+                style={{ width: `${syncProgressPct}%` }}
+              />
+            </div>
+          </div>
           <button
             onClick={() => onNavigateToTab('ingest')}
-            className="flex items-center gap-1 text-cyan-400 hover:text-cyan-300 font-medium text-xs transition-colors"
+            className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 text-xs font-medium transition-colors"
           >
-            <span>Inspect Live Ingestion Deck</span>
+            <span>Live Command Deck</span>
             <ArrowRight className="w-3.5 h-3.5" />
           </button>
         </div>

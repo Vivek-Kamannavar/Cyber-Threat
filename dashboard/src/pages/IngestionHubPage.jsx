@@ -48,12 +48,17 @@ const INITIAL_LOGS = [
   }
 ];
 
-export default function IngestionHubPage({ onOpenUpload, onSimulate, onNavigateToTab }) {
+export default function IngestionHubPage({
+  onOpenUpload,
+  onSimulate,
+  onNavigateToTab,
+  secondsUntilSync = 300,
+  onResetSyncTimer
+}) {
   const [feed, setFeed] = useState(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [notice, setNotice] = useState(null);
-  const [secondsUntilSync, setSecondsUntilSync] = useState(300);
   const [activityLogs, setActivityLogs] = useState(INITIAL_LOGS);
 
   const loadFeed = useCallback(async () => {
@@ -80,24 +85,10 @@ export default function IngestionHubPage({ onOpenUpload, onSimulate, onNavigateT
     };
   }, []);
 
-  // 5-minute countdown timer logic (300 seconds)
-  useEffect(() => {
-    const countdownTimer = setInterval(() => {
-      setSecondsUntilSync((prev) => {
-        if (prev <= 1) {
-          return 300;
-        }
-        return prev - 1;
-      });
-    }, 1000);
-
-    return () => clearInterval(countdownTimer);
-  }, []);
-
   // Listen to live WebSocket feed_update & audit_log events
   useEffect(() => {
     const unsubFeed = eventBus.on('feed_update', (update) => {
-      setSecondsUntilSync(300);
+      if (onResetSyncTimer) onResetSyncTimer();
       setNotice({
         tone: 'ok',
         text: `Live Sync Completed at ${new Date().toLocaleTimeString()} — +${update.fresh_count || 0} fresh indicators (${update.total_indicators || 0} total).`
@@ -123,14 +114,14 @@ export default function IngestionHubPage({ onOpenUpload, onSimulate, onNavigateT
       unsubFeed();
       unsubAudit();
     };
-  }, [loadFeed]);
+  }, [loadFeed, onResetSyncTimer]);
 
   const handleRefresh = async () => {
     setRefreshing(true);
     setNotice(null);
     try {
       const result = await refreshFeed();
-      setSecondsUntilSync(300);
+      if (onResetSyncTimer) onResetSyncTimer();
       setNotice({
         tone: result.status === 'refreshed' ? 'ok' : 'warn',
         text: result.status === 'refreshed'
