@@ -36,9 +36,12 @@ export default function Header({
   onToggleViewMode,
   onSelectStreamSource,
   currentTab,
-  onSelectTab
+  onSelectTab,
+  secondsUntilSync = 300
 }) {
   const isLive = isConnected && connectionMode === 'LIVE_BACKEND';
+  const mins = Math.floor(secondsUntilSync / 60);
+  const secs = (secondsUntilSync % 60).toString().padStart(2, '0');
 
   const statusLabel = !isConnected
     ? 'Diode: OFFLINE'
@@ -87,6 +90,22 @@ export default function Header({
             </span>
             {statusLabel}
           </span>
+
+          {/* Threat Intel Auto-Sync Pill with Live Countdown */}
+          <button
+            onClick={() => onSelectTab && onSelectTab('ingest')}
+            className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg border border-cyan-500/40 bg-cyan-500/10 text-cyan-300 text-[11px] font-mono font-medium hover:bg-cyan-500/20 transition-all shadow-sm"
+            title="Out-of-band threat-intel adapter auto-sync countdown. Click to view Data Ingestion Hub."
+          >
+            <span className="relative flex h-2 w-2">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-cyan-400 opacity-75" />
+              <span className="relative inline-flex rounded-full h-2 w-2 bg-cyan-400" />
+            </span>
+            <span className="text-slate-300">Intel Sync:</span>
+            <span className="font-mono font-bold text-cyan-300 bg-cyan-950/80 px-1.5 py-0.5 rounded border border-cyan-700/50">
+              {mins}:{secs}
+            </span>
+          </button>
 
           {/* Stream source selector */}
           <label className="flex items-center gap-1.5 bg-soc-bg border border-soc-border rounded-lg pl-2.5 pr-1 py-1">

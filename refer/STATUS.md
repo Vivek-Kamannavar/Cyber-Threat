@@ -1,20 +1,25 @@
 # Project Status: Cyber-Threat Detection
 
-- **Current Branch:** `feat/clean-ui-adapter-ai`
+- **Current Branch:** `feat/continuous-incident-streaming-soc`
 - **Location:** `E:\Cyber-Threat`
-- **Active Ports:** Backend `8000` | Dashboard `5173` (also deployed to Firebase)
-- **Current Milestone:** Clean SOC interface, conversational AI analyst, and verified live threat-intel feed
+- **Active PR:** [#5 (Merged/Review on GitHub)](https://github.com/Vivek-Kamannavar/Cyber-Threat/pull/5)
+- **Active Ports:** All background ports terminated (Backend `8000` / Dashboard `5173` available for restart)
+- **Current Milestone:** PR Submitted & Cleaned — Continuous threat incident streaming, 5-min auto-sync, unified SOC deck & fork branches pruned
 
 ---
 
 ## Current State & Capabilities
-1. **Clean SOC Interface:** Unified 3-pillar navigation (Live Monitor, AI Security Analyst Chat, Data Ingestion Hub) using deep obsidian/cobalt palette (`dashboard/src/index.css`).
-2. **Conversational AI Analyst:** `/api/copilot/chat` endpoint powered by Groq Llama 3 with real-time sliding window context injection and deterministic offline fallbacks.
-3. **Live Threat-Intel Bridge:** `ingest/adapter_bridge.py` feeds 100 live GitHub security advisories into local cache (`backend/data/threat_intel.json`).
-4. **Verification Matrix:** 68/68 pytest suite passing, `npm run build --prefix dashboard` clean, live smoke test passing.
+1. **Pull Request Submitted:** [PR #5](https://github.com/Vivek-Kamannavar/Cyber-Threat/pull/5) opened against `Vivek-Kamannavar/Cyber-Threat:main`. Fork branches pruned.
+2. **Unified Live Ingestion Command Deck:** Dedicated hero card featuring a 5-stage lifecycle stepper, wall-clock persistent 5-minute countdown (`mm:ss`), and live activity audit log.
+3. **Automated 5-Minute Threat Intel Sync:** Server-side periodic out-of-band execution via local `@shrinivas-sn/adapter-ingestion` (zero CI latency) updating indicators into memory.
+4. **Persistent Wall-Clock Countdown:** LocalStorage + epoch sync maintains uninterrupted countdown across page reloads.
+5. **False Positive Hardening & Incident Bounding:** Calibrated Isolation Forest thresholding (`ml_score >= 0.80`) and sliding-window bounding, preventing 2000+ incident ballooning.
+6. **Non-Intrusive Toast Alerts:** Human-readable single-action toasts via `ToastContainer.jsx` (no background alert popup spam).
+7. **Verification Matrix:** 72/72 pytest suite passing, `npm run build --prefix dashboard` clean with 0 errors.
 
 ---
 
 ## Next up (start here)
-1. **Launch Stack:** Run `uvicorn backend.main:app` and `npm run dev --prefix dashboard` to visually review the 3 pillars in the browser.
-2. **Jury Evaluation & Demo:** Review demo presentation flow using assets in `refer/CyberThreat_Detection_Demo.mp4` and `refer/Cyber_Threat_Detection_Whitepaper.html`.
+1. **Review & Merge PR #5:** Track merge status on [GitHub PR #5](https://github.com/Vivek-Kamannavar/Cyber-Threat/pull/5).
+2. **Start Local Stack (When needed):** Launch `uvicorn backend.main:app` and `npm run dev --prefix dashboard`.
+3. **Further Enhancements:** Continue developing additional threat detection heuristics or reporting dashboards as requested.

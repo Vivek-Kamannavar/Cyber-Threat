@@ -9,6 +9,7 @@ import LiveMonitorPage from './pages/LiveMonitorPage';
 import IngestionHubPage from './pages/IngestionHubPage';
 import TopologyLabPage from './pages/TopologyLabPage';
 import ForensicScannerPage from './pages/ForensicScannerPage';
+import ToastContainer from './components/ToastContainer';
 import { 
   initializeSocketStream, 
   simulateThreat, 
@@ -33,6 +34,73 @@ export default function App() {
   const [isExecutiveView, setIsExecutiveView] = useState(false);
   const [autoDetectionEnabled, setAutoDetectionEnabled] = useState(true);
   const [showGuideModal, setShowGuideModal] = useState(false);
+  const [toasts, setToasts] = useState([]);
+
+  const addToast = (toast) => {
+    const id = `toast-${Date.now()}`;
+    const newToast = {
+      id,
+      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
+      ...toast
+    };
+    // Keep strictly 1 toast at a time so screen is never cluttered
+    setToasts([newToast]);
+    setTimeout(() => {
+      setToasts((prev) => prev.filter((t) => t.id !== id));
+    }, 4000);
+  };
+
+  const handleDismissToast = (id) => {
+    setToasts((prev) => prev.filter((t) => t.id !== id));
+  };
+
+  const getInitialRemainingSeconds = () => {
+    try {
+      const stored = localStorage.getItem('threat_intel_next_sync_target');
+      const target = stored ? parseInt(stored, 10) : 0;
+      const now = Date.now();
+      if (target > now && target - now <= 300000) {
+        return Math.max(1, Math.floor((target - now) / 1000));
+      }
+      const newTarget = now + 300000;
+      localStorage.setItem('threat_intel_next_sync_target', newTarget.toString());
+      return 300;
+    } catch {
+      return 300;
+    }
+  };
+
+  const [secondsUntilSync, setSecondsUntilSync] = useState(getInitialRemainingSeconds);
+
+  // 5-minute persistent real-time countdown (persists across page reloads)
+  useEffect(() => {
+    const updateCountdown = () => {
+      try {
+        let stored = localStorage.getItem('threat_intel_next_sync_target');
+        let target = stored ? parseInt(stored, 10) : 0;
+        const now = Date.now();
+        if (!target || target <= now || target - now > 305000) {
+          target = now + 300000;
+          localStorage.setItem('threat_intel_next_sync_target', target.toString());
+        }
+        const remaining = Math.max(0, Math.floor((target - now) / 1000));
+        setSecondsUntilSync(remaining === 0 ? 300 : remaining);
+      } catch {
+        setSecondsUntilSync((prev) => (prev <= 1 ? 300 : prev - 1));
+      }
+    };
+
+    updateCountdown();
+    const timer = setInterval(updateCountdown, 1000);
+    return () => clearInterval(timer);
+  }, []);
+
+  const handleResetSyncTimer = (targetMs) => {
+    const newTarget = targetMs || (Date.now() + 300000);
+    localStorage.setItem('threat_intel_next_sync_target', newTarget.toString());
+    const remaining = Math.max(1, Math.floor((newTarget - Date.now()) / 1000));
+    setSecondsUntilSync(remaining);
+  };
 
   // Hash-based routing for 3 distinct pages
   const getInitialTab = () => {
@@ -67,7 +135,16 @@ export default function App() {
   useEffect(() => {
     // Listen for global alert events (from file upload / simulation / scanner)
     const unsubAlert = eventBus.on('alert', (newAlert) => {
-      setAlerts((prev) => [newAlert, ...prev]);
+      setAlerts((prev) => [newAlert, ...prev].slice(0, 50));
+    });
+
+    const unsubFeed = eventBus.on('feed_update', (data) => {
+      handleResetSyncTimer(data?.target_sync_timestamp_ms);
+      addToast({
+        type: 'feed',
+        title: 'Threat Intel Synchronized',
+        message: `+${data?.fresh_count || 0} fresh indicators indexed (${data?.total_indicators || 117} total).`
+      });
     });
 
     const cleanup = initializeSocketStream({
@@ -79,7 +156,7 @@ export default function App() {
         try {
           if (msg.type === 'snapshot') {
             if (msg.recent_alerts) {
-              setAlerts(msg.recent_alerts);
+              setAlerts(msg.recent_alerts.slice(0, 50));
               prevAlertsRef.current = msg.total_alerts || msg.recent_alerts.length;
             }
             if (msg.auto_detection_enabled !== undefined) {
@@ -93,6 +170,11 @@ export default function App() {
             setAlerts([]);
             prevAlertsRef.current = 0;
             setHistoryData((prev) => prev.map(item => ({ ...item, threatSpike: 0, alerts: 0 })));
+            addToast({
+              type: 'success',
+              title: 'Incident Queue Cleared',
+              message: 'All historical alerts in the active window have been reset.'
+            });
           } else if (msg.type === 'telemetry') {
             setTelemetry(msg.data || { pps: 0, bps: 0 });
             if (msg.auto_detection_enabled !== undefined) {
@@ -125,7 +207,23 @@ export default function App() {
             });
 
           } else if (msg.type === 'alert') {
-            setAlerts((prev) => [msg.data, ...prev]);
+            setAlerts((prev) => [msg.data, ...prev].slice(0, 50));
+            eventBus.emit('audit_log', {
+              id: msg.data.alert_id,
+              timestamp: msg.data.timestamp || new Date().toISOString(),
+              type: 'threat',
+              title: `Threat Alert: ${msg.data.threat_class}`,
+              detail: `${msg.data.flow_identifier?.src_ip} ➔ ${msg.data.flow_identifier?.dst_ip} (${Math.round((msg.data.confidence_score || 0.95) * 100)}% conf)`
+            });
+          } else if (msg.type === 'feed_update') {
+            eventBus.emit('feed_update', msg.data);
+            eventBus.emit('audit_log', {
+              id: `SYNC-${Date.now()}`,
+              timestamp: new Date().toISOString(),
+              type: 'feed',
+              title: 'Threat Intel 5-Min Auto-Sync',
+              detail: `+${msg.data?.fresh_count || 0} fresh indicators extracted (${msg.data?.total_indicators || 0} cached)`
+            });
           }
         } catch (e) {
           console.error("Error handling stream message:", e);
@@ -141,8 +239,13 @@ export default function App() {
 
   const handleSimulate = async (threatType) => {
     try {
+      addToast({
+        type: 'threat',
+        title: 'Scenario Injected',
+        message: `Simulating controlled ${threatType.replace('_', ' ')} vector across diode.`
+      });
       await simulateThreat(threatType, (newAlert) => {
-        setAlerts((prev) => [newAlert, ...prev]);
+        setAlerts((prev) => [newAlert, ...prev].slice(0, 50));
       });
     } catch (e) {
       console.error("Failed to run simulation:", e);
@@ -154,6 +257,13 @@ export default function App() {
       const data = await toggleAutoDetection();
       if (data && data.auto_detection_enabled !== undefined) {
         setAutoDetectionEnabled(data.auto_detection_enabled);
+        addToast({
+          type: data.auto_detection_enabled ? 'success' : 'warn',
+          title: data.auto_detection_enabled ? 'Detection Active' : 'Detection Paused',
+          message: data.auto_detection_enabled
+            ? 'Threat detection engine is actively analyzing incoming flows.'
+            : 'Threat detection engine paused. Traffic recorded for throughput only.'
+        });
       }
     } catch (e) {
       console.error("Failed to toggle auto-detection:", e);
@@ -189,7 +299,10 @@ export default function App() {
   const hasCriticalThreat = alerts.some(a => (a.confidence_score || 0) >= 0.90);
 
   return (
-    <div className="min-h-screen flex flex-col bg-[#090d16] text-slate-100">
+    <div className="min-h-screen flex flex-col bg-[#090d16] text-slate-100 relative">
+      {/* Real-time Human-Readable Toast Alerts */}
+      <ToastContainer toasts={toasts} onDismiss={handleDismissToast} />
+
       <Header
         isConnected={isConnected}
         connectionMode={connectionMode}
@@ -205,6 +318,7 @@ export default function App() {
         onToggleViewMode={() => setIsExecutiveView(!isExecutiveView)}
         currentTab={activeTab}
         onSelectTab={handleSelectTab}
+        secondsUntilSync={secondsUntilSync}
       />
 
       <main className="flex-1 max-w-7xl w-full mx-auto p-4 md:p-6">
@@ -220,6 +334,7 @@ export default function App() {
             onSelectAlert={(alert) => setSelectedAlert(alert)}
             onOpenAiCopilot={handleOpenCopilot}
             onNavigateToTab={handleSelectTab}
+            secondsUntilSync={secondsUntilSync}
           />
         )}
 
@@ -239,6 +354,8 @@ export default function App() {
             onOpenUpload={() => setIsUploadModalOpen(true)}
             onSimulate={handleSimulate}
             onNavigateToTab={handleSelectTab}
+            secondsUntilSync={secondsUntilSync}
+            onResetSyncTimer={handleResetSyncTimer}
           />
         )}
 

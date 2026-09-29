@@ -62,11 +62,11 @@ export function setStreamSource(mode) {
   }
 }
 
-// Initial alerts baseline for authentic demo
+// Initial alerts baseline for authentic demo (all 6 primary threat classes)
 const INITIAL_DEMO_ALERTS = [
   {
     alert_id: "ALT-70778D62",
-    timestamp: new Date(Date.now() - 45000).toISOString(),
+    timestamp: new Date(Date.now() - 30000).toISOString(),
     flow_identifier: {
       src_ip: "192.168.10.22",
       src_port: 49204,
@@ -83,12 +83,12 @@ const INITIAL_DEMO_ALERTS = [
       inter_arrival_time_std_dev: 0.12,
       coefficient_of_variation: 0.024,
       flow_count: 8,
-      reason: "Host is secretly sending regular 'tap-tap-tap' check-in signals to a known hacker command center."
+      reason: "Host is secretly sending regular periodic check-in signals to a known command and control node."
     }
   },
   {
     alert_id: "ALT-9CA25794",
-    timestamp: new Date(Date.now() - 120000).toISOString(),
+    timestamp: new Date(Date.now() - 75000).toISOString(),
     flow_identifier: {
       src_ip: "192.168.10.18",
       src_port: 53005,
@@ -105,7 +105,94 @@ const INITIAL_DEMO_ALERTS = [
       entropy: 3.94,
       ngram_rarity: 0.91,
       qtype: "TXT",
-      reason: "Computer is asking for scrambled secret-code domain names used to sneak stolen secrets out without detection."
+      reason: "Computer is requesting algorithmic pseudo-random domain names used to tunnel stolen data covertly."
+    }
+  },
+  {
+    alert_id: "ALT-B488C110",
+    timestamp: new Date(Date.now() - 130000).toISOString(),
+    flow_identifier: {
+      src_ip: "10.200.1.15",
+      src_port: 42100,
+      src_label: "External Threat Subnet",
+      dst_ip: "192.168.10.50",
+      dst_port: 80,
+      dst_label: "SCADA Core Controller",
+      protocol: "TCP"
+    },
+    threat_class: "Volumetric / Protocol DDoS",
+    confidence_score: 0.99,
+    supporting_evidence_feature: {
+      source_entropy: 0.72,
+      packet_rate_pps: 14250,
+      tcp_syn_ratio: 0.98,
+      flows_in_window: 40,
+      reason: "Massive burst of half-open TCP SYN packets attempting to exhaust connection tables on the SCADA controller."
+    }
+  },
+  {
+    alert_id: "ALT-E5F902A3",
+    timestamp: new Date(Date.now() - 195000).toISOString(),
+    flow_identifier: {
+      src_ip: "192.168.10.30",
+      src_port: 51234,
+      src_label: "Turbine Sensor Gateway",
+      dst_ip: "91.215.102.14",
+      dst_port: 4444,
+      dst_label: "Known Malicious Host",
+      protocol: "TCP"
+    },
+    threat_class: "Encrypted Malware (TLS/QUIC)",
+    confidence_score: 0.98,
+    supporting_evidence_feature: {
+      ja3_hash: "a0e42d24b9c7c4b0959f676e939da290",
+      ja4_fingerprint: "t13d151600_a0e4_badmalware",
+      tls_sni: "update-service-raw.xyz",
+      cipher_suite: "TLS_ECDHE_RSA_WITH_RC4_128_SHA",
+      reason: "Cryptographic JA3 fingerprint matches Cobalt Strike staged payload communicating on port 4444."
+    }
+  },
+  {
+    alert_id: "ALT-C31198DF",
+    timestamp: new Date(Date.now() - 260000).toISOString(),
+    flow_identifier: {
+      src_ip: "192.168.10.99",
+      src_port: 58042,
+      src_label: "Rogue Wi-Fi Bridge",
+      dst_ip: "10.0.0.1",
+      dst_port: 445,
+      dst_label: "Domain Controller",
+      protocol: "TCP"
+    },
+    threat_class: "Reconnaissance & Port Scanning",
+    confidence_score: 0.95,
+    supporting_evidence_feature: {
+      unique_ports_targeted: 35,
+      scan_speed_pps: 700,
+      tcp_flags: "SYN Sweep",
+      reason: "Host executed rapid SYN sweep across 35 distinct industrial ports to probe for exposed services."
+    }
+  },
+  {
+    alert_id: "ALT-F92D08A1",
+    timestamp: new Date(Date.now() - 320000).toISOString(),
+    flow_identifier: {
+      src_ip: "192.168.10.15",
+      src_port: 59120,
+      src_label: "Historian Database Server",
+      dst_ip: "45.142.214.8",
+      dst_port: 443,
+      dst_label: "External Drop Server",
+      protocol: "TCP"
+    },
+    threat_class: "Data Exfiltration",
+    confidence_score: 0.96,
+    supporting_evidence_feature: {
+      bytes_sent_outbound: 18450000,
+      bytes_received_inbound: 12500,
+      asymmetry_ratio: 1475.88,
+      megabytes_exfiltrated: 18.45,
+      reason: "Asymmetric outbound bulk transfer (18.45 MB transmitted) detected crossing the unidirectional diode boundary."
     }
   }
 ];
@@ -309,6 +396,9 @@ function startCloudSimulation(onMessage) {
   if (simInterval) clearInterval(simInterval);
   isSimulating = true;
 
+  let simTickCount = 0;
+  const threatCycle = ['ddos', 'c2_beacon', 'dga_dns', 'encrypted_malware', 'port_scan', 'data_exfiltration'];
+
   // Send initial snapshot
   onMessage({
     type: 'snapshot',
@@ -319,6 +409,22 @@ function startCloudSimulation(onMessage) {
 
   simInterval = setInterval(() => {
     if (!isSimulating) return;
+
+    simTickCount++;
+
+    // Autonomously inject an authentic threat vector every 12 seconds when auto-detection is active
+    if (simAutoDetection && simTickCount % 12 === 0) {
+      const threatType = threatCycle[Math.floor((simTickCount / 12) - 1) % threatCycle.length];
+      const newAlert = generateSyntheticAlert(threatType);
+      simAlerts = [newAlert, ...simAlerts.slice(0, 99)];
+      simTotalAlerts += 1;
+
+      eventBus.emit('alert', newAlert);
+      onMessage({
+        type: 'alert',
+        data: newAlert
+      });
+    }
 
     // Fluctuating realistic throughput
     const pps = Math.floor(1800 + Math.random() * 2400 + Math.sin(Date.now() / 10000) * 800);
