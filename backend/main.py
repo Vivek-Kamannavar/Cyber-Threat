@@ -10,6 +10,7 @@ import json
 import time
 import uuid
 import re
+import random
 from typing import List, Dict, Any, Optional
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect, HTTPException, UploadFile, File, Query
 from fastapi.middleware.cors import CORSMiddleware
@@ -27,7 +28,7 @@ from engine.threat_detector import ThreatDetector
 from engine.features import calculate_dns_ngram_score
 from backend.config import Config
 from backend.services.groq_service import GroqCopilotService
-from backend.database import get_alert_by_id, save_ai_analysis, get_ai_analysis
+from backend.database import get_alert_by_id, save_ai_analysis, get_ai_analysis, save_alert
 from backend.copilot import ConversationalCopilot
 from ingest.adapter_bridge import AdapterFeedBridge, DedupeWindow, ingest_stream_batch
 
@@ -49,6 +50,153 @@ app.add_middleware(
 # Global engine & generator instances
 detector = ThreatDetector(window_size_seconds=Config.WINDOW_SIZE_SECONDS)
 generator = TrafficGenerator()
+
+# Initial alerts baseline representing all 6 primary threat classes
+BASELINE_DEMO_ALERTS = [
+    {
+        "alert_id": "ALT-70778D62",
+        "timestamp": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime(time.time() - 30)),
+        "threat_class": "Botnet C2 Beaconing",
+        "confidence_score": 0.98,
+        "flow_identifier": {
+            "src_ip": "192.168.10.22",
+            "src_port": 49204,
+            "src_label": "Engineering Workstation #2",
+            "dst_ip": "185.220.101.5",
+            "dst_port": 8443,
+            "dst_label": "External C2 Node",
+            "protocol": "TCP"
+        },
+        "supporting_evidence_feature": {
+            "inter_arrival_time_mean_seconds": 5.0,
+            "inter_arrival_time_std_dev": 0.12,
+            "coefficient_of_variation": 0.024,
+            "flow_count": 8,
+            "reason": "Host is secretly sending regular periodic check-in signals to a known command and control node."
+        }
+    },
+    {
+        "alert_id": "ALT-9CA25794",
+        "timestamp": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime(time.time() - 75)),
+        "threat_class": "DGA Domains & DNS Tunnelling",
+        "confidence_score": 0.96,
+        "flow_identifier": {
+            "src_ip": "192.168.10.18",
+            "src_port": 53005,
+            "src_label": "ICS Telemetry Gateway",
+            "dst_ip": "8.8.8.8",
+            "dst_port": 53,
+            "dst_label": "Public DNS Resolver",
+            "protocol": "UDP"
+        },
+        "supporting_evidence_feature": {
+            "dns_query": "x7q9b2m8w1z4v5k8p2a0c4f1.exfil-tunnel.badactor.top",
+            "entropy": 3.94,
+            "ngram_rarity": 0.91,
+            "qtype": "TXT",
+            "reason": "Computer is requesting algorithmic pseudo-random domain names used to tunnel stolen data covertly."
+        }
+    },
+    {
+        "alert_id": "ALT-B488C110",
+        "timestamp": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime(time.time() - 130)),
+        "threat_class": "Volumetric / Protocol DDoS",
+        "confidence_score": 0.99,
+        "flow_identifier": {
+            "src_ip": "10.200.1.15",
+            "src_port": 42100,
+            "src_label": "External Threat Subnet",
+            "dst_ip": "192.168.10.50",
+            "dst_port": 80,
+            "dst_label": "SCADA Core Controller",
+            "protocol": "TCP"
+        },
+        "supporting_evidence_feature": {
+            "source_entropy": 0.72,
+            "packet_rate_pps": 14250,
+            "tcp_syn_ratio": 0.98,
+            "flows_in_window": 40,
+            "reason": "Massive burst of half-open TCP SYN packets attempting to exhaust connection tables on the SCADA controller."
+        }
+    },
+    {
+        "alert_id": "ALT-E5F902A3",
+        "timestamp": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime(time.time() - 195)),
+        "threat_class": "Encrypted Malware (TLS/QUIC)",
+        "confidence_score": 0.98,
+        "flow_identifier": {
+            "src_ip": "192.168.10.30",
+            "src_port": 51234,
+            "src_label": "Turbine Sensor Gateway",
+            "dst_ip": "91.215.102.14",
+            "dst_port": 4444,
+            "dst_label": "Known Malicious Host",
+            "protocol": "TCP"
+        },
+        "supporting_evidence_feature": {
+            "ja3_hash": "a0e42d24b9c7c4b0959f676e939da290",
+            "ja4_fingerprint": "t13d151600_a0e4_badmalware",
+            "tls_sni": "update-service-raw.xyz",
+            "cipher_suite": "TLS_ECDHE_RSA_WITH_RC4_128_SHA",
+            "reason": "Cryptographic JA3 fingerprint matches Cobalt Strike staged payload communicating on port 4444."
+        }
+    },
+    {
+        "alert_id": "ALT-C31198DF",
+        "timestamp": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime(time.time() - 260)),
+        "threat_class": "Reconnaissance & Port Scanning",
+        "confidence_score": 0.95,
+        "flow_identifier": {
+            "src_ip": "192.168.10.99",
+            "src_port": 58042,
+            "src_label": "Rogue Wi-Fi Bridge",
+            "dst_ip": "10.0.0.1",
+            "dst_port": 445,
+            "dst_label": "Domain Controller",
+            "protocol": "TCP"
+        },
+        "supporting_evidence_feature": {
+            "unique_ports_targeted": 35,
+            "scan_speed_pps": 700,
+            "tcp_flags": "SYN Sweep",
+            "reason": "Host executed rapid SYN sweep across 35 distinct industrial ports to probe for exposed services."
+        }
+    },
+    {
+        "alert_id": "ALT-F92D08A1",
+        "timestamp": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime(time.time() - 320)),
+        "threat_class": "Data Exfiltration",
+        "confidence_score": 0.96,
+        "flow_identifier": {
+            "src_ip": "192.168.10.15",
+            "src_port": 59120,
+            "src_label": "Historian Database Server",
+            "dst_ip": "45.142.214.8",
+            "dst_port": 443,
+            "dst_label": "External Drop Server",
+            "protocol": "TCP"
+        },
+        "supporting_evidence_feature": {
+            "bytes_sent_outbound": 18450000,
+            "bytes_received_inbound": 12500,
+            "asymmetry_ratio": 1475.88,
+            "megabytes_exfiltrated": 18.45,
+            "reason": "Asymmetric outbound bulk transfer (18.45 MB transmitted) detected crossing the unidirectional diode boundary."
+        }
+    }
+]
+
+def _ensure_baseline_alerts():
+    """Seeds baseline alerts in memory and database on fresh startup if empty."""
+    if len(detector.get_all_alerts()) == 0:
+        for a in BASELINE_DEMO_ALERTS:
+            detector.alerts_history.append(a)
+            try:
+                save_alert(a)
+            except Exception:
+                pass
+
+_ensure_baseline_alerts()
 
 class ConnectionManager:
     """Manages active WebSocket client connections for real-time alert dispatching."""
@@ -80,9 +228,25 @@ class ToggleDetectionRequest(BaseModel):
 
 # Background stream simulator task
 async def background_flow_simulation():
-    """Continuously generates benign background traffic and processes through the ML engine."""
+    """Continuously generates benign background traffic and periodically streams threat scenarios."""
+    tick_count = 0
+    threat_types = ['ddos', 'c2_beacon', 'dga_dns', 'encrypted_malware', 'port_scan', 'data_exfiltration']
     while True:
         try:
+            tick_count += 1
+
+            # Periodically (approx every 12-15 seconds / 25 ticks) stream an authentic threat scenario when auto-detection is active
+            if auto_detection_enabled and (tick_count % 25 == 0):
+                chosen_threat = threat_types[(tick_count // 25 - 1) % len(threat_types)]
+                scenario_flows = generator.generate_threat_scenario(chosen_threat)
+                for s_flow in scenario_flows:
+                    raised = detector.process_flow(s_flow)
+                    for alert in raised:
+                        await manager.broadcast({
+                            "type": "alert",
+                            "data": alert
+                        })
+
             # Generate continuous normal flow
             flow = generator.generate_benign_flow()
             alerts = []
