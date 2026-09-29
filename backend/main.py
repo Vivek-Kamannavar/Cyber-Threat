@@ -497,6 +497,7 @@ stream_dedupe = DedupeWindow()
 
 last_feed_sync_meta = {
     "last_sync_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+    "last_sync_timestamp": time.time(),
     "fresh_count": 0,
     "total_indicators": len(feed_bridge.indicators()),
     "interval_seconds": 300,
@@ -519,8 +520,10 @@ async def periodic_threat_intel_refresh_task():
 
             total_indicators = result.get("indicators", len(feed_bridge.indicators()))
             now_iso = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
+            now_ts = time.time()
 
             last_feed_sync_meta["last_sync_at"] = now_iso
+            last_feed_sync_meta["last_sync_timestamp"] = now_ts
             last_feed_sync_meta["fresh_count"] = fresh_count
             last_feed_sync_meta["total_indicators"] = total_indicators
             last_feed_sync_meta["status"] = "synced"
@@ -528,12 +531,14 @@ async def periodic_threat_intel_refresh_task():
             # Broadcast live feed update to all connected dashboard clients
             await manager.broadcast({
                 "type": "feed_update",
-                "timestamp": time.time(),
+                "timestamp": now_ts,
                 "data": {
                     "status": "refreshed",
                     "fresh_count": fresh_count,
                     "total_indicators": total_indicators,
                     "last_sync_at": now_iso,
+                    "last_sync_timestamp": now_ts,
+                    "target_sync_timestamp_ms": int((now_ts + 300) * 1000),
                     "interval_seconds": 300,
                     "feed_status": feed_bridge.status()
                 }
@@ -588,7 +593,15 @@ async def ingest_collector_stream(req: StreamBatchRequest):
 def get_feed_status():
     """Reports the out-of-band adapter feed, its adapters, and the local indicator cache with live sync metadata."""
     status = feed_bridge.status()
-    status["sync_metadata"] = last_feed_sync_meta
+    now_ts = time.time()
+    last_ts = last_feed_sync_meta.get("last_sync_timestamp", now_ts)
+    elapsed = max(0, int(now_ts - last_ts))
+    remaining = max(0, 300 - elapsed)
+
+    meta_copy = dict(last_feed_sync_meta)
+    meta_copy["next_sync_seconds"] = remaining
+    meta_copy["target_sync_timestamp_ms"] = int((last_ts + 300) * 1000)
+    status["sync_metadata"] = meta_copy
     return status
 
 
@@ -602,19 +615,23 @@ async def refresh_feed(host: Optional[str] = Query(None)):
         fresh_count += stages.get("fresh", 0)
 
     now_iso = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
+    now_ts = time.time()
     last_feed_sync_meta["last_sync_at"] = now_iso
+    last_feed_sync_meta["last_sync_timestamp"] = now_ts
     last_feed_sync_meta["fresh_count"] = fresh_count
     last_feed_sync_meta["total_indicators"] = result.get("indicators", len(feed_bridge.indicators()))
     last_feed_sync_meta["status"] = "synced"
 
     await manager.broadcast({
         "type": "feed_update",
-        "timestamp": time.time(),
+        "timestamp": now_ts,
         "data": {
             "status": "refreshed",
             "fresh_count": fresh_count,
             "total_indicators": last_feed_sync_meta["total_indicators"],
             "last_sync_at": now_iso,
+            "last_sync_timestamp": now_ts,
+            "target_sync_timestamp_ms": int((now_ts + 300) * 1000),
             "interval_seconds": 300,
             "feed_status": feed_bridge.status()
         }

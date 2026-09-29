@@ -33,15 +33,53 @@ export default function App() {
   const [isExecutiveView, setIsExecutiveView] = useState(false);
   const [autoDetectionEnabled, setAutoDetectionEnabled] = useState(true);
   const [showGuideModal, setShowGuideModal] = useState(false);
-  const [secondsUntilSync, setSecondsUntilSync] = useState(300);
+  const getInitialRemainingSeconds = () => {
+    try {
+      const stored = localStorage.getItem('threat_intel_next_sync_target');
+      const target = stored ? parseInt(stored, 10) : 0;
+      const now = Date.now();
+      if (target > now && target - now <= 300000) {
+        return Math.max(1, Math.floor((target - now) / 1000));
+      }
+      const newTarget = now + 300000;
+      localStorage.setItem('threat_intel_next_sync_target', newTarget.toString());
+      return 300;
+    } catch {
+      return 300;
+    }
+  };
 
-  // 5-minute periodic auto-sync countdown (300s)
+  const [secondsUntilSync, setSecondsUntilSync] = useState(getInitialRemainingSeconds);
+
+  // 5-minute persistent real-time countdown (persists across page reloads)
   useEffect(() => {
-    const timer = setInterval(() => {
-      setSecondsUntilSync((prev) => (prev <= 1 ? 300 : prev - 1));
-    }, 1000);
+    const updateCountdown = () => {
+      try {
+        let stored = localStorage.getItem('threat_intel_next_sync_target');
+        let target = stored ? parseInt(stored, 10) : 0;
+        const now = Date.now();
+        if (!target || target <= now || target - now > 305000) {
+          target = now + 300000;
+          localStorage.setItem('threat_intel_next_sync_target', target.toString());
+        }
+        const remaining = Math.max(0, Math.floor((target - now) / 1000));
+        setSecondsUntilSync(remaining === 0 ? 300 : remaining);
+      } catch {
+        setSecondsUntilSync((prev) => (prev <= 1 ? 300 : prev - 1));
+      }
+    };
+
+    updateCountdown();
+    const timer = setInterval(updateCountdown, 1000);
     return () => clearInterval(timer);
   }, []);
+
+  const handleResetSyncTimer = (targetMs) => {
+    const newTarget = targetMs || (Date.now() + 300000);
+    localStorage.setItem('threat_intel_next_sync_target', newTarget.toString());
+    const remaining = Math.max(1, Math.floor((newTarget - Date.now()) / 1000));
+    setSecondsUntilSync(remaining);
+  };
 
   // Hash-based routing for 3 distinct pages
   const getInitialTab = () => {
@@ -79,8 +117,8 @@ export default function App() {
       setAlerts((prev) => [newAlert, ...prev]);
     });
 
-    const unsubFeed = eventBus.on('feed_update', () => {
-      setSecondsUntilSync(300);
+    const unsubFeed = eventBus.on('feed_update', (data) => {
+      handleResetSyncTimer(data?.target_sync_timestamp_ms);
     });
 
     const cleanup = initializeSocketStream({
@@ -271,7 +309,7 @@ export default function App() {
             onSimulate={handleSimulate}
             onNavigateToTab={handleSelectTab}
             secondsUntilSync={secondsUntilSync}
-            onResetSyncTimer={() => setSecondsUntilSync(300)}
+            onResetSyncTimer={handleResetSyncTimer}
           />
         )}
 
